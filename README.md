@@ -73,3 +73,12 @@ The app compares 2–4 candidate models under the same selected region and crop 
 The delivered web application is Next.js in `apps/web/`; the FastAPI service is in `apps/api/`. The `ml/` directory documents, but does not implement, the blocked evaluation pipeline. No authorized model checkpoints, ground-truth agricultural labels, documented split protocol, or supported ML runtime are included in this repository. Do not report performance results until those inputs and a documented evaluation protocol are provided.
 
 The API tests start an isolated temporary SQLite database and exercise real HTTP routes, including provenance validation/persistence and migrations of the former demo-score schema. The Playwright tests exercise the live Next.js frontend and backend, including blocked evaluation/provenance display, comparison persistence, error recovery, and CSV download. The prior Vite build remains available for compatibility; it is development tooling and is not used by the Next.js app.
+
+## Implementation status
+
+The latest implementation adds:
+
+- Live Open-Meteo weather ingestion, SQLite caching, ingestion job state, and data-source status APIs.
+- A farmer-facing weather guide with English/Hindi copy and planning-only disclaimers.
+- Asset-gated evaluation jobs and a pure segmentation-metric helper module.
+- Explicit blocked results while authorized checkpoints, labels, a geographic split, and a supported inference backend remain unavailable.

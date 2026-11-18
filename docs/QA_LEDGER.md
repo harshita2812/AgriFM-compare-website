@@ -22,6 +22,17 @@ Latest phase validation:
 | Playwright UI suite | 9 passed, 0 failed | 0 |
 | Next.js production build | Passed | 0 |
 
+### Phase 4 — final QA and dependency hardening (2026-11-19)
+
+- API and metric suite: 14 passed, 0 failed/errors.
+- Playwright suite: 10 passed, 0 failed.
+- Next.js production build: passed.
+- Vite compatibility build: passed, 1,578 modules transformed.
+- Full `npm audit`: 0 vulnerabilities.
+- Production-only `npm audit --omit=dev`: 0 vulnerabilities.
+- The earlier 4 high development-tool advisories are no longer reported by the current registry/lockfile resolution.
+- Sequential build and browser validation avoid `.next` state contention with the running Next development server.
+
 ### Phase 3 — evaluation job framework (2026-11-19)
 
 Implemented:
@@ -64,16 +75,16 @@ This ledger covers the repository as updated for the five audited gaps: Next.js 
 
 Final validation (all commands run from the project root):
 
-Latest rerun: 2026-11-18.
+Latest rerun: 2026-11-19.
 
 | Command | Result | Exit code |
 |---|---:|---:|
-| `npm run test:api` (latest rerun) | 9 passed, 0 failed/errors (`unittest`, including provenance and legacy SQLite migrations) | 0 |
-| `npm run test:ui` (latest rerun) | 9 passed, 0 failed (`Playwright` / Chromium against Next.js and FastAPI) | 0 |
+| `npm run test:api` (latest rerun) | 14 passed, 0 failed/errors (`unittest`, including provenance, live-data, legacy SQLite migrations, and metric helpers) | 0 |
+| `npm run test:ui` (latest rerun) | 10 passed, 0 failed (`Playwright` / Chromium against Next.js and FastAPI) | 0 |
 | `npm run build` (latest rerun) | Next.js production build succeeded; routes `/` and `/_not-found` generated | 0 |
 | `npm run build:vite` (latest rerun) | Vite 6.4.6 transformed 1,578 modules and emitted production assets | 0 |
 | `npm audit --omit=dev` (latest rerun) | 0 vulnerabilities | 0 |
-| `npm audit` (latest rerun) | 4 high advisories remain in development-only Vite/picomatch tooling; production dependency tree is clean | 1 |
+| `npm audit` (latest rerun) | 0 vulnerabilities across the full dependency tree | 0 |
 | VS Code Problems | No errors found | — |
 | Personal-name scan over app, backend, README, and tests | No named personal details found | 0 |
 

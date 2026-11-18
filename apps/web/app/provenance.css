@@ -33,3 +33,155 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.farmer-controls {
+  margin-bottom: 14px;
+}
+
+.farmer-load {
+  width: 100%;
+}
+
+.farmer-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.farmer-summary-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 82px;
+}
+
+.farmer-summary-card > div:last-child {
+  display: grid;
+  gap: 5px;
+}
+
+.farmer-summary-card small {
+  color: #87928a;
+  font-size: 10px;
+}
+
+.farmer-summary-card strong {
+  color: #35483b;
+  font-size: 15px;
+}
+
+.farmer-summary-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+}
+
+.farmer-summary-icon.heat {
+  background: #fff1d9;
+  color: #ad7131;
+}
+
+.farmer-summary-icon.rain {
+  background: #e9f2f6;
+  color: #56879c;
+}
+
+.farmer-summary-icon.region {
+  background: #edf4ec;
+  color: #557a5d;
+}
+
+.farmer-advice,
+.farmer-forecast {
+  margin-bottom: 14px;
+}
+
+.farmer-advice-list {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 12px;
+}
+
+.farmer-advice-list > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid #edf0eb;
+  border-radius: 8px;
+  background: #fbfdfb;
+}
+
+.farmer-advice-list > div > span {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: #edf4ec;
+  color: #557a5d;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.farmer-advice-list p {
+  margin: 3px 0 0;
+  color: #58675d;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.forecast-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(98px, 1fr));
+  gap: 8px;
+  overflow-x: auto;
+  padding-top: 14px;
+}
+
+.forecast-day {
+  min-width: 98px;
+  display: grid;
+  gap: 8px;
+  padding: 11px 9px;
+  border: 1px solid #edf0eb;
+  border-radius: 8px;
+  background: #fcfdfb;
+  color: #7a867d;
+  font-size: 9px;
+}
+
+.forecast-day strong {
+  color: #405248;
+  font-size: 10px;
+}
+
+.forecast-day span {
+  min-height: 28px;
+  color: #7f8b82;
+  line-height: 1.35;
+}
+
+.forecast-day div {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+@media (max-width: 580px) {
+  .farmer-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .forecast-grid {
+    grid-template-columns: repeat(7, 116px);
+  }
+
+  .farmer-advice-list p {
+    font-size: 10px;
+  }
+}

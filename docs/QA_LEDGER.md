@@ -22,6 +22,24 @@ Latest phase validation:
 | Playwright UI suite | 9 passed, 0 failed | 0 |
 | Next.js production build | Passed | 0 |
 
+### Phase 2 — farmer-facing weather guide (2026-11-19)
+
+Implemented:
+
+- A responsive `Farmer guide` navigation section.
+- Region, crop, and English/Hindi controls.
+- 7-day weather summary cards for hot-day and rainfall indicators.
+- Simple planning advisories with a visible planning-only disclaimer.
+- Playwright coverage for Hindi rendering and advisory display.
+
+Latest phase validation:
+
+| Command | Result | Exit code |
+|---|---:|---:|
+| API integration suite | 11 passed, 0 failed/errors | 0 |
+| Playwright UI suite | 10 passed, 0 failed | 0 |
+| Next.js production build | Passed | 0 |
+
 This ledger covers the repository as updated for the five audited gaps: Next.js (`apps/web/`), FastAPI (`apps/api/`), and the retained Vite compatibility entry point (`src/`). `ml/` contains blocker documentation only; a real inference/evaluation pipeline and its required assets are unavailable.
 
 Final validation (all commands run from the project root):

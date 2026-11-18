@@ -7,19 +7,19 @@ test("all primary sections, help, About disclaimer, and no-upload/no-PII boundar
   await expect(page.locator(".project-card .muted, .student-card .muted")).toHaveCount(0);
 
   const nav = page.locator(".nav-item");
-  await nav.nth(2).click();
+  await nav.nth(3).click();
   await expect(page.getByRole("status")).toContainText("DEMO DATA");
   await expect(page.getByRole("heading", { name: "Models in the study" })).toBeVisible();
   await expect(page.getByText("Not evaluated", { exact: true }).first()).toBeVisible();
 
-  await nav.nth(3).click();
+  await nav.nth(4).click();
   await expect(page.getByRole("status")).toContainText("DEMO DATA");
   await expect(page.getByRole("heading", { name: "Datasets & imagery" })).toBeVisible();
   await expect(page.locator(".dataset-panel tbody tr")).toHaveCount(4);
   await expect(page.locator(".dataset-panel")).toContainText("Metadata only");
   await expect(page.locator(".dataset-panel")).not.toContainText("Ready");
 
-  await nav.nth(4).click();
+  await nav.nth(5).click();
   await expect(page.getByRole("status")).toContainText("DEMO DATA");
   await expect(page.getByRole("heading", { name: "Methodology & evaluation" })).toBeVisible();
   await expect(page.getByText("Seeded performance scores exist")).toHaveCount(0);
@@ -36,13 +36,42 @@ test("all primary sections, help, About disclaimer, and no-upload/no-PII boundar
   await nav.nth(1).click();
   await expect(page.getByRole("status")).toContainText("DEMO DATA");
   await expect(page.getByRole("heading", { name: "Compare foundation models" })).toBeVisible();
-  await page.locator(".nav-item").nth(2).click();
+  await page.locator(".nav-item").nth(3).click();
   await expect(page.getByRole("status")).toContainText("DEMO DATA");
   await page.getByRole("button", { name: "Compare models", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Compare foundation models" })).toBeVisible();
   await nav.nth(0).click();
   await expect(page.getByRole("status")).toContainText("DEMO DATA");
   await expect(page.getByRole("heading", { name: "Region-controlled study setup." })).toBeVisible();
+});
+
+test("farmer guide loads planning guidance and Hindi copy", async ({ page }) => {
+  await page.route("**/api/farmer/advisory", (route) => route.fulfill({
+    json: {
+      region_id: "punjab",
+      region_name: "Punjab",
+      crop: "Wheat",
+      language: "hi",
+      source: "Open-Meteo",
+      asset_id: "fixture-weather",
+      fetched_at: "2026-11-19T00:00:00+00:00",
+      forecast_days: 7,
+      summary: { hottest_day_c: 30, total_rainfall_mm: 12 },
+      advisories: ["यह एक परीक्षण पूर्वानुमान सलाह है।", "सुबह सिंचाई की योजना बनाएं।", "स्थानीय कृषि अधिकारी से सलाह लें।"],
+      disclaimer: "यह सार्वजनिक मौसम पूर्वानुमान पर आधारित योजना सहायता है, प्रमाणित कृषि सलाह नहीं।",
+      daily: [
+        { date: "2026-11-19", temperature_max_c: 30, temperature_min_c: 18, precipitation_mm: 2, condition: "Light rain" },
+      ],
+    },
+  }));
+  await page.goto("/");
+  await page.locator(".nav-item").nth(2).click();
+  await expect(page.getByRole("heading", { name: "Weather-based crop planning" })).toBeVisible();
+  await page.getByLabel("Language").selectOption("hi");
+  await expect(page.getByRole("heading", { name: "मौसम आधारित फसल योजना" })).toBeVisible();
+  await page.getByRole("button", { name: "7-दिन की सलाह देखें" }).click();
+  await expect(page.locator(".farmer-advice")).toContainText("यह एक परीक्षण पूर्वानुमान सलाह है");
+  await expect(page.locator(".farmer-advice")).toContainText("प्रमाणित कृषि सलाह नहीं");
 });
 
 test("overview entry points reach the comparison workspace", async ({ page }) => {
@@ -64,12 +93,12 @@ test("model library add actions select the model in the comparison workspace", a
   }
   await expect(page.locator('.model-choice[aria-pressed="true"]')).toHaveCount(0);
 
-  await nav.nth(2).click();
+  await nav.nth(3).click();
   await expect(page.locator(".model-card")).toHaveCount(4);
   for (let index = 0; index < 4; index += 1) {
     await page.locator(".model-card").nth(index).getByRole("button", { name: "Add to a comparison" }).click();
     await expect(page.locator(".model-choice").nth(index)).toHaveAttribute("aria-pressed", "true");
-    if (index < 3) await nav.nth(2).click();
+    if (index < 3) await nav.nth(3).click();
   }
 });
 
@@ -202,7 +231,7 @@ test("responsive navigation stays off-canvas on smaller screens and remains acce
     await expect.poll(() => sidebar.evaluate((el) => el.getBoundingClientRect().right)).toBeLessThanOrEqual(0);
   }
   await page.getByRole("button", { name: "Open navigation" }).click();
-  await page.locator(".nav-item").nth(4).click();
+  await page.locator(".nav-item").nth(5).click();
   await expect(page.getByRole("heading", { name: "Methodology & evaluation" })).toBeVisible();
 });
 

@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import {
   Activity, ArrowRight, BarChart3, BookOpen, Check, ChevronDown,
-  CircleHelp, Clock3, Database, Download, FlaskConical, Layers3, Leaf,
+  CircleHelp, Clock3, CloudSun, Database, Download, Droplets, FlaskConical, Languages, Layers3, Leaf,
   MapPin, Menu, Satellite, Settings2, ShieldCheck,
-  Sprout, Target, TrendingUp, X
+  Sprout, Target, ThermometerSun, TrendingUp, X
 } from "lucide-react";
 
 const API = "/api";
@@ -120,6 +120,7 @@ function App() {
   const nav = [
     { name: "Overview", icon: BarChart3 },
     { name: "Compare models", icon: FlaskConical },
+    { name: "Farmer guide", icon: Sprout },
     { name: "Model library", icon: Layers3 },
     { name: "Datasets", icon: Database },
     { name: "Methodology", icon: BookOpen },
@@ -166,6 +167,7 @@ function App() {
           <div className="demo-banner" role="status"><strong>DEMO DATA</strong><span>Evaluation has not been run on ground-truth data. No model performance metrics are available.</span></div>
           {page === "Overview" && <Overview data={data} runs={runs} onCompare={() => setPage("Compare")} onRunSelect={(run) => { selectRun(run); setPage("Compare"); }} />}
           {page === "Compare" && <Compare models={models} regions={regions} datasets={datasets} selectedModels={selectedModels} toggleModel={toggleModel} region={region} setRegion={setRegion} crop={crop} setCrop={setCrop} season={season} setSeason={setSeason} dataset={dataset} setDataset={setDataset} onRun={runComparison} busy={busy} run={activeRun} runs={runs} onRunSelect={selectRun} />}
+          {page === "Farmer guide" && <FarmerGuide regions={regions} crops={data?.crops || ["Wheat", "Rice", "Cotton", "Sugarcane", "Maize"]} />}
           {page === "Model library" && <ModelLibrary models={models} onCompare={() => setPage("Compare")} onAddModel={addModelToComparison} />}
           {page === "Datasets" && <Datasets datasets={datasets} />}
           {page === "Methodology" && <Methodology methodology={methodology} />}
@@ -246,6 +248,73 @@ function PerformanceChart({ results }) {
 
 function regionLabel(id) {
   return ({ punjab: "Punjab", up: "Western Uttar Pradesh", maharashtra: "Maharashtra", karnataka: "Karnataka", bihar: "Bihar" })[id] || id;
+}
+
+function FarmerGuide({ regions, crops }) {
+  const [region, setRegion] = useState("punjab");
+  const [crop, setCrop] = useState("Wheat");
+  const [language, setLanguage] = useState("en");
+  const [advisory, setAdvisory] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const loadGuidance = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await request("/farmer/advisory", {
+        method: "POST",
+        body: JSON.stringify({ region_id: region, crop, forecast_days: 7, language }),
+      });
+      setAdvisory(result);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return <>
+    <PageHeading eyebrow="FARMER WEATHER GUIDE" title={language === "hi" ? "मौसम आधारित फसल योजना" : "Weather-based crop planning"} subtitle={language === "hi" ? "मौसम पूर्वानुमान को सरल रोज़मर्रा की योजना में बदलें।" : "Turn a 7-day public weather forecast into simple planning guidance."} />
+    {error && <div className="error-banner"><CircleHelp size={17} /><span>{error}</span><button onClick={loadGuidance}>Retry</button></div>}
+    <section className="panel farmer-controls">
+      <div className="panel-heading">
+        <div><h2>{language === "hi" ? "अपना विकल्प चुनें" : "Choose your context"}</h2><p>{language === "hi" ? "क्षेत्र और फसल के अनुसार जानकारी देखें" : "Get guidance for a region and crop"}</p></div>
+        <Languages size={18} />
+      </div>
+      <div className="form-grid">
+        <label className="field"><span>{language === "hi" ? "राज्य / क्षेत्र" : "State / region"}</span><div className="select-wrap"><MapPin size={15} /><select value={region} onChange={(e) => setRegion(e.target.value)}>{regions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><ChevronDown size={14} /></div></label>
+        <label className="field"><span>{language === "hi" ? "फसल" : "Crop"}</span><div className="select-wrap"><Sprout size={15} /><select value={crop} onChange={(e) => setCrop(e.target.value)}>{crops.map((item) => <option key={item}>{item}</option>)}</select><ChevronDown size={14} /></div></label>
+        <label className="field"><span>{language === "hi" ? "भाषा" : "Language"}</span><div className="select-wrap"><Languages size={15} /><select value={language} onChange={(e) => setLanguage(e.target.value)}><option value="en">English</option><option value="hi">हिंदी</option></select><ChevronDown size={14} /></div></label>
+      </div>
+      <button className="button primary farmer-load" disabled={busy} onClick={loadGuidance}>{busy ? <><span className="spinner" /> {language === "hi" ? "पूर्वानुमान ले रहे हैं…" : "Loading forecast…"}</> : <><CloudSun size={16} /> {language === "hi" ? "7-दिन की सलाह देखें" : "Get 7-day guidance"}</>}</button>
+    </section>
+    {advisory && <>
+      <div className="farmer-summary-grid">
+        <section className="panel farmer-summary-card">
+          <div className="farmer-summary-icon heat"><ThermometerSun size={20} /></div>
+          <div><small>{language === "hi" ? "सबसे गर्म दिन" : "Hottest forecast"}</small><strong>{advisory.summary.hottest_day_c == null ? "—" : `${advisory.summary.hottest_day_c}°C`}</strong></div>
+        </section>
+        <section className="panel farmer-summary-card">
+          <div className="farmer-summary-icon rain"><Droplets size={20} /></div>
+          <div><small>{language === "hi" ? "कुल अनुमानित बारिश" : "Expected rainfall"}</small><strong>{advisory.summary.total_rainfall_mm == null ? "—" : `${advisory.summary.total_rainfall_mm} mm`}</strong></div>
+        </section>
+        <section className="panel farmer-summary-card">
+          <div className="farmer-summary-icon region"><MapPin size={20} /></div>
+          <div><small>{language === "hi" ? "क्षेत्र" : "Region"}</small><strong>{advisory.region_name}</strong></div>
+        </section>
+      </div>
+      <section className="panel farmer-advice">
+        <div className="panel-heading"><div><h2>{language === "hi" ? "सरल योजना सलाह" : "Simple planning advice"}</h2><p>{advisory.crop} · {advisory.source} · {advisory.forecast_days} {language === "hi" ? "दिन" : "days"}</p></div><span className="illustrative-tag">{language === "hi" ? "पूर्वानुमान" : "FORECAST"}</span></div>
+        <div className="farmer-advice-list">{advisory.advisories.map((item, index) => <div key={item}><span>{String(index + 1).padStart(2, "0")}</span><p>{item}</p></div>)}</div>
+        <div className="caveat"><ShieldCheck size={15} /><span>{advisory.disclaimer}</span></div>
+      </section>
+      <section className="panel farmer-forecast">
+        <div className="panel-heading"><div><h2>{language === "hi" ? "7-दिन का मौसम" : "7-day weather"}</h2><p>{language === "hi" ? "दिनवार तापमान और बारिश" : "Daily temperature and rainfall"}</p></div></div>
+        <div className="forecast-grid">{advisory.daily.map((day) => <article key={day.date} className="forecast-day"><strong>{fmt(day.date)}</strong><span>{day.condition}</span><div><ThermometerSun size={14} /> {day.temperature_max_c == null ? "—" : `${day.temperature_max_c}°`} / {day.temperature_min_c == null ? "—" : `${day.temperature_min_c}°`}</div><div><Droplets size={14} /> {day.precipitation_mm == null ? "—" : `${day.precipitation_mm} mm`}</div></article>)}</div>
+      </section>
+    </>}
+  </>;
 }
 
 function Compare({ models, regions, datasets, selectedModels, toggleModel, region, setRegion, crop, setCrop, season, setSeason, dataset, setDataset, onRun, busy, run, runs, onRunSelect }) {

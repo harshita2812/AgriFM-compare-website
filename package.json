@@ -1,0 +1,29 @@
+{
+  "name": "agrifm-compare",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev apps/web --hostname 0.0.0.0",
+    "build": "next build apps/web",
+    "preview": "next start apps/web --hostname 0.0.0.0",
+    "dev:vite": "vite --host 127.0.0.1",
+    "build:vite": "vite build",
+    "test:api": "node scripts/test-api.mjs",
+    "test:ui": "playwright test"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "next": "^15.5.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@vitejs/plugin-react": "^4.7.0",
+    "vite": "^6.4.6"
+  },
+  "overrides": {
+    "postcss": "^8.5.33"
+  }
+}

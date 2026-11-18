@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.next/
+apps/web/.next/
+__pycache__/
+*.py[cod]
+.venv/
+agrifm.db
+.env
+test-results/
+playwright-report/

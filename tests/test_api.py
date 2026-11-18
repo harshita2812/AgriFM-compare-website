@@ -150,6 +150,24 @@ class ApiIntegrationTests(unittest.TestCase):
         })
         self.assertEqual(status, 404)
 
+    def test_evaluation_job_remains_blocked_without_manifest_and_assets(self):
+        status, job = self.request("POST", "/api/evaluations/jobs", {
+            "region_id": "punjab",
+            "crop": "Wheat",
+            "dataset_id": "sentinel2",
+            "model_ids": ["prithvi", "satmae"],
+        })
+        self.assertEqual(status, 200)
+        self.assertEqual(job["status"], "blocked")
+        self.assertTrue(all(result["f1"] is None for result in job["results"]))
+        execute_status, executed = self.request("POST", f"/api/evaluations/jobs/{job['id']}/execute")
+        self.assertEqual(execute_status, 200)
+        self.assertEqual(executed["status"], "blocked")
+        self.assertIn("AGRIFM_EVALUATION_MANIFEST", executed["detail"])
+        list_status, jobs = self.request("GET", "/api/evaluations/jobs")
+        self.assertEqual(list_status, 200)
+        self.assertIn(job["id"], [item["id"] for item in jobs])
+
     def test_new_comparison_persists_without_fabricated_scores(self):
         body = {
             "region_id": "punjab",
@@ -237,6 +255,26 @@ class ApiIntegrationTests(unittest.TestCase):
             payload = {**valid, **changes}
             status, body = self.request("POST", "/api/runs", payload)
             self.assertEqual(status, expected_status, (changes, body))
+
+
+class SegmentationMetricTests(unittest.TestCase):
+    def test_binary_metrics_are_calculated_from_predictions_and_labels(self):
+        from ml.evaluation import segmentation_metrics
+
+        metrics = segmentation_metrics(
+            predictions=[[1, 1], [0, 1]],
+            labels=[[1, 0], [0, 1]],
+        )
+        self.assertAlmostEqual(metrics["accuracy"], 0.75)
+        self.assertAlmostEqual(metrics["f1"], 0.8)
+        self.assertAlmostEqual(metrics["iou"], 2 / 3)
+        self.assertGreaterEqual(metrics["kappa"], 0.0)
+
+    def test_mismatched_arrays_are_rejected(self):
+        from ml.evaluation import segmentation_metrics
+
+        with self.assertRaises(ValueError):
+            segmentation_metrics([1, 0], [1])
 
 
 class LegacyDatabaseMigrationTests(unittest.TestCase):

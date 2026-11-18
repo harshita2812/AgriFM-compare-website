@@ -22,6 +22,26 @@ Latest phase validation:
 | Playwright UI suite | 9 passed, 0 failed | 0 |
 | Next.js production build | Passed | 0 |
 
+### Phase 3 — evaluation job framework (2026-11-19)
+
+Implemented:
+
+- SQLite evaluation-job persistence.
+- `POST /api/evaluations/jobs` for creating asset-gated blocked jobs.
+- `POST /api/evaluations/jobs/{id}/execute` for explicit manifest and asset validation.
+- `GET /api/evaluations/jobs` for job history and status.
+- SHA-256 manifest capture only after a supplied manifest passes field and asset-path validation.
+- Pure binary segmentation metric calculations in `ml/evaluation.py`.
+- Tests proving blocked jobs remain blocked, arrays are validated, and metric helpers do not fabricate model results.
+
+Latest phase validation:
+
+| Command | Result | Exit code |
+|---|---:|---:|
+| API and metric integration suite | 14 passed, 0 failed/errors | 0 |
+| Playwright UI suite | 10 passed, 0 failed | 0 |
+| Next.js production build | Passed | 0 |
+
 ### Phase 2 — farmer-facing weather guide (2026-11-19)
 
 Implemented:

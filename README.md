@@ -54,6 +54,7 @@ The Next.js application is in `apps/web/app/`, and the FastAPI implementation is
 - Responsive layouts for desktop and mobile, served by Next.js.
 - Public Open-Meteo weather refresh for the five study regions, with cached SQLite assets and ingestion job status.
 - Bilingual farmer advisory API with explicit planning-only and certified-advice disclaimers.
+- Asset-gated evaluation-job APIs and metric helpers that keep real inference blocked until authorized inputs and a supported backend exist.
 
 ## Data and scope decisions
 

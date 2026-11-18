@@ -8,6 +8,9 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Literal, TypedDict
 from uuid import uuid4
+from urllib.parse import urlencode
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +19,10 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = Path(os.environ.get("AGRIFM_DB_PATH", ROOT / "backend" / "agrifm.db"))
+WEATHER_API_BASE = os.environ.get(
+    "AGRIFM_WEATHER_API_URL",
+    "https://api.open-meteo.com/v1/forecast",
+)
 
 MODELS = [
     {
@@ -126,6 +133,38 @@ def init_db() -> None:
                 model_ids TEXT NOT NULL, results_json TEXT NOT NULL,
                 is_demo INTEGER NOT NULL DEFAULT 1, provenance_json TEXT
             );
+            CREATE TABLE IF NOT EXISTS data_sources (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                provider TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                coverage TEXT NOT NULL,
+                status TEXT NOT NULL,
+                access_type TEXT NOT NULL,
+                source_url TEXT,
+                updated_at TEXT
+            );
+            CREATE TABLE IF NOT EXISTS data_assets (
+                id TEXT PRIMARY KEY,
+                source_id TEXT NOT NULL,
+                region_id TEXT NOT NULL,
+                asset_type TEXT NOT NULL,
+                payload_json TEXT NOT NULL,
+                fetched_at TEXT NOT NULL,
+                status TEXT NOT NULL,
+                FOREIGN KEY(source_id) REFERENCES data_sources(id)
+            );
+            CREATE TABLE IF NOT EXISTS ingestion_jobs (
+                id TEXT PRIMARY KEY,
+                source_id TEXT NOT NULL,
+                region_id TEXT,
+                asset_id TEXT,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                completed_at TEXT,
+                detail TEXT,
+                FOREIGN KEY(source_id) REFERENCES data_sources(id)
+            );
             """
         )
         for table in ("models", "regions", "datasets", "runs"):
@@ -159,6 +198,23 @@ def init_db() -> None:
                 tuple(dataset[key] for key in ("id", "name", "provider", "resolution", "coverage", "type", "status")),
             )
             conn.execute("UPDATE datasets SET status = ? WHERE id = ?", (dataset["status"], dataset["id"]))
+        data_sources = [
+            ("open-meteo", "Open-Meteo", "Open-Meteo Contributors", "Weather forecast",
+             "Selected region", "Live public data", "No key required", "https://open-meteo.com/"),
+            ("copernicus-sentinel", "Sentinel-2 / Sentinel-1", "Copernicus / ESA",
+             "Satellite imagery", "Global satellite archive", "Catalog only", "Credentials may be required",
+             "https://dataspace.copernicus.eu/"),
+            ("crop-calendar", "Regional crop calendar", "Illustrative project metadata",
+             "Seasonal context", "India", "Reference only", "No live service",
+             None),
+        ]
+        for source in data_sources:
+            conn.execute(
+                """INSERT OR IGNORE INTO data_sources
+                   (id, name, provider, kind, coverage, status, access_type, source_url, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)""",
+                source,
+            )
         for run in conn.execute("SELECT id, model_ids FROM runs").fetchall():
             conn.execute(
                 "UPDATE runs SET results_json = ?, is_demo = 1 WHERE id = ?",
@@ -230,6 +286,18 @@ class RunRequest(BaseModel):
     provenance: EvaluationProvenance | None = None
 
 
+class WeatherRefreshRequest(BaseModel):
+    region_id: str
+    forecast_days: int = Field(default=7, ge=1, le=16)
+
+
+class FarmerAdvisoryRequest(BaseModel):
+    region_id: str
+    crop: str
+    forecast_days: int = Field(default=7, ge=1, le=16)
+    language: Literal["en", "hi"] = "en"
+
+
 def run_disclosure_fields(provenance: dict[str, Any] | None) -> dict[str, Any]:
     if provenance:
         provenance_status = "declared_unverified"
@@ -243,6 +311,114 @@ def run_disclosure_fields(provenance: dict[str, Any] | None) -> dict[str, Any]:
         "provenance": provenance,
         "provenance_status": provenance_status,
         "provenance_reason": provenance_reason,
+    }
+
+
+WEATHER_CODE_TEXT = {
+    0: "Clear",
+    1: "Mostly clear",
+    2: "Partly cloudy",
+    3: "Overcast",
+    45: "Fog",
+    48: "Rime fog",
+    51: "Light drizzle",
+    53: "Drizzle",
+    55: "Heavy drizzle",
+    61: "Light rain",
+    63: "Rain",
+    65: "Heavy rain",
+    71: "Light snow",
+    80: "Rain showers",
+    81: "Rain showers",
+    82: "Heavy rain showers",
+    95: "Thunderstorm",
+    96: "Thunderstorm with hail",
+    99: "Severe thunderstorm",
+}
+
+
+def get_region_or_404(region_id: str) -> sqlite3.Row:
+    with closing(connect()) as conn:
+        region = conn.execute("SELECT * FROM regions WHERE id = ?", (region_id,)).fetchone()
+    if not region:
+        raise HTTPException(status_code=404, detail="Region not found.")
+    return region
+
+
+def refresh_weather(region_id: str, forecast_days: int) -> dict[str, Any]:
+    region = get_region_or_404(region_id)
+    job_id = str(uuid4())
+    created_at = datetime.now(timezone.utc).isoformat()
+    with closing(connect()) as conn:
+        conn.execute(
+            """INSERT INTO ingestion_jobs
+               (id, source_id, region_id, asset_id, status, created_at, completed_at, detail)
+               VALUES (?, 'open-meteo', ?, NULL, 'running', ?, NULL, NULL)""",
+            (job_id, region_id, created_at),
+        )
+        conn.commit()
+
+    query = urlencode({
+        "latitude": region["lat"],
+        "longitude": region["lon"],
+        "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum,weather_code",
+        "forecast_days": forecast_days,
+        "timezone": "Asia/Kolkata",
+    })
+    try:
+        request = Request(f"{WEATHER_API_BASE}?{query}", headers={"User-Agent": "AgriFM-Compare/1.0"})
+        with urlopen(request, timeout=12) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
+        detail = f"Weather source request failed: {error}"
+        with closing(connect()) as conn:
+            conn.execute(
+                """UPDATE ingestion_jobs
+                   SET status = 'failed', completed_at = ?, detail = ?
+                   WHERE id = ?""",
+                (datetime.now(timezone.utc).isoformat(), detail, job_id),
+            )
+            conn.commit()
+        raise HTTPException(status_code=502, detail=detail)
+
+    fetched_at = datetime.now(timezone.utc).isoformat()
+    asset_id = str(uuid4())
+    normalized = {
+        "source": "Open-Meteo",
+        "source_url": "https://open-meteo.com/",
+        "timezone": payload.get("timezone", "Asia/Kolkata"),
+        "latitude": payload.get("latitude", region["lat"]),
+        "longitude": payload.get("longitude", region["lon"]),
+        "daily": payload.get("daily", {}),
+        "forecast_days": forecast_days,
+        "fetched_at": fetched_at,
+    }
+    with closing(connect()) as conn:
+        conn.execute(
+            """INSERT INTO data_assets
+               (id, source_id, region_id, asset_type, payload_json, fetched_at, status)
+               VALUES (?, 'open-meteo', ?, 'weather_forecast', ?, ?, 'ready')""",
+            (asset_id, region_id, json.dumps(normalized), fetched_at),
+        )
+        conn.execute(
+            """UPDATE data_sources SET status = 'Live public data', updated_at = ?
+               WHERE id = 'open-meteo'""",
+            (fetched_at,),
+        )
+        conn.execute(
+            """UPDATE ingestion_jobs
+               SET status = 'ready', asset_id = ?, completed_at = ?, detail = ?
+               WHERE id = ?""",
+            (asset_id, fetched_at, "Weather forecast downloaded and cached.", job_id),
+        )
+        conn.commit()
+    return {
+        "job_id": job_id,
+        "asset_id": asset_id,
+        "region_id": region_id,
+        "region_name": region["name"],
+        "status": "ready",
+        "asset": normalized,
     }
 
 
@@ -389,6 +565,124 @@ def get_dashboard() -> dict[str, Any]:
         "models": models,
         "regions": regions,
         "runs": runs[:5],
+    }
+
+
+@app.get("/api/data/sources")
+def get_data_sources() -> dict[str, Any]:
+    with closing(connect()) as conn:
+        sources = [dict(row) for row in conn.execute(
+            "SELECT * FROM data_sources ORDER BY name"
+        ).fetchall()]
+        jobs = [dict(row) for row in conn.execute(
+            "SELECT * FROM ingestion_jobs ORDER BY created_at DESC LIMIT 20"
+        ).fetchall()]
+    return {"sources": sources, "jobs": jobs, "is_demo": False}
+
+
+@app.post("/api/data/weather/refresh")
+def refresh_region_weather(request: WeatherRefreshRequest) -> dict[str, Any]:
+    return refresh_weather(request.region_id, request.forecast_days)
+
+
+@app.get("/api/data/weather/{region_id}")
+def get_cached_weather(region_id: str) -> dict[str, Any]:
+    get_region_or_404(region_id)
+    with closing(connect()) as conn:
+        row = conn.execute(
+            """SELECT * FROM data_assets
+               WHERE region_id = ? AND asset_type = 'weather_forecast' AND status = 'ready'
+               ORDER BY fetched_at DESC LIMIT 1""",
+            (region_id,),
+        ).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="No weather asset has been ingested for this region.")
+    return {
+        "asset_id": row["id"],
+        "region_id": row["region_id"],
+        "status": row["status"],
+        "asset": json.loads(row["payload_json"]),
+    }
+
+
+@app.post("/api/farmer/advisory")
+def get_farmer_advisory(request: FarmerAdvisoryRequest) -> dict[str, Any]:
+    if request.crop not in CROPS:
+        raise HTTPException(status_code=422, detail="Select a supported crop.")
+    region = get_region_or_404(request.region_id)
+    try:
+        refresh = refresh_weather(request.region_id, request.forecast_days)
+    except HTTPException:
+        raise
+
+    daily = refresh["asset"].get("daily", {})
+    dates = daily.get("time", [])
+    max_temps = daily.get("temperature_2m_max", [])
+    min_temps = daily.get("temperature_2m_min", [])
+    rain_values = daily.get("precipitation_sum", [])
+    codes = daily.get("weather_code", [])
+    valid_temps = [value for value in max_temps if isinstance(value, (int, float))]
+    valid_rain = [value for value in rain_values if isinstance(value, (int, float))]
+    hottest = max(valid_temps) if valid_temps else None
+    total_rain = round(sum(valid_rain), 1) if valid_rain else None
+
+    if hottest is not None and hottest >= 38:
+        heat_en = "High heat is forecast. Schedule irrigation or field work early morning or evening."
+        heat_hi = "अधिक गर्मी का पूर्वानुमान है। सिंचाई या खेत का काम सुबह जल्दी या शाम को करें।"
+    elif hottest is not None and hottest >= 34:
+        heat_en = "Warm conditions are forecast. Check soil moisture before irrigation."
+        heat_hi = "गरम मौसम का पूर्वानुमान है। सिंचाई से पहले मिट्टी में नमी देखें।"
+    else:
+        heat_en = "No unusually high temperature is forecast in this period."
+        heat_hi = "इस अवधि में सामान्य से अधिक गर्मी का पूर्वानुमान नहीं है।"
+
+    if total_rain is not None and total_rain >= 40:
+        rain_en = f"Heavy rain may reduce spraying opportunities; plan drainage and delay fertilizer application if runoff is likely."
+        rain_hi = f"भारी बारिश से छिड़काव प्रभावित हो सकता है। जल निकासी देखें और बहाव की संभावना हो तो उर्वरक रोकें।"
+    elif total_rain is not None and total_rain >= 15:
+        rain_en = f"Some rain is expected; consider naturally available soil moisture before irrigation."
+        rain_hi = f"कुछ बारिश की संभावना है। सिंचाई से पहले मिट्टी की प्राकृतिक नमी देखें।"
+    else:
+        rain_en = "Low rainfall is forecast; monitor soil moisture and follow local irrigation guidance."
+        rain_hi = "कम बारिश का पूर्वानुमान है। मिट्टी की नमी जांचें और स्थानीय सिंचाई सलाह लें।"
+
+    summaries = []
+    for index, date_value in enumerate(dates):
+        code = codes[index] if index < len(codes) else None
+        summaries.append({
+            "date": date_value,
+            "temperature_max_c": max_temps[index] if index < len(max_temps) else None,
+            "temperature_min_c": min_temps[index] if index < len(min_temps) else None,
+            "precipitation_mm": rain_values[index] if index < len(rain_values) else None,
+            "condition": WEATHER_CODE_TEXT.get(code, "Not reported"),
+        })
+
+    return {
+        "region_id": region["id"],
+        "region_name": region["name"],
+        "crop": request.crop,
+        "language": request.language,
+        "source": "Open-Meteo",
+        "asset_id": refresh["asset_id"],
+        "fetched_at": refresh["asset"]["fetched_at"],
+        "forecast_days": request.forecast_days,
+        "summary": {
+            "hottest_day_c": hottest,
+            "total_rainfall_mm": total_rain,
+        },
+        "advisories": [
+            heat_en if request.language == "en" else heat_hi,
+            rain_en if request.language == "en" else rain_hi,
+            ("Keep inputs within the label, and consult a local agriculture officer for crop-specific decisions."
+             if request.language == "en"
+             else "इनपुट लेबल के अनुसार रखें और फसल-विशिष्ट निर्णय के लिए स्थानीय कृषि अधिकारी से सलाह लें."),
+        ],
+        "disclaimer": (
+            "Planning aid based on a public weather forecast, not a certified agronomic recommendation."
+            if request.language == "en"
+            else "यह सार्वजनिक मौसम पूर्वानुमान पर आधारित योजना सहायता है, प्रमाणित कृषि सलाह नहीं।"
+        ),
+        "daily": summaries,
     }
 
 

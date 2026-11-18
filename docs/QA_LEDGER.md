@@ -2,6 +2,26 @@
 
 ## Scope and evidence
 
+### Phase 1 — automatic data foundation (2026-11-19)
+
+Implemented the first live-data integration slice:
+
+- Added source and ingestion-job APIs at `/api/data/sources`.
+- Added cached weather assets at `/api/data/weather/{region_id}`.
+- Added live Open-Meteo refresh at `/api/data/weather/refresh`.
+- Added bilingual farmer advisory infrastructure at `/api/farmer/advisory`.
+- Added SQLite `data_sources`, `data_assets`, and `ingestion_jobs` tables with startup seeding.
+- Recorded network and provider errors as ingestion failures instead of fabricated data.
+- Added API tests for source metadata, ingestion-job status, cached-weather absence, and region validation.
+
+Latest phase validation:
+
+| Command | Result | Exit code |
+|---|---:|---:|
+| API integration suite | 11 passed, 0 failed/errors | 0 |
+| Playwright UI suite | 9 passed, 0 failed | 0 |
+| Next.js production build | Passed | 0 |
+
 This ledger covers the repository as updated for the five audited gaps: Next.js (`apps/web/`), FastAPI (`apps/api/`), and the retained Vite compatibility entry point (`src/`). `ml/` contains blocker documentation only; a real inference/evaluation pipeline and its required assets are unavailable.
 
 Final validation (all commands run from the project root):

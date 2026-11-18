@@ -130,6 +130,26 @@ class ApiIntegrationTests(unittest.TestCase):
         status, _ = self.request("GET", "/api/uploads")
         self.assertEqual(status, 404)
 
+    def test_data_sources_and_ingestion_jobs_are_explicit(self):
+        status, data = self.request("GET", "/api/data/sources")
+        self.assertEqual(status, 200)
+        self.assertIs(data["is_demo"], False)
+        sources = {source["id"]: source for source in data["sources"]}
+        self.assertIn("open-meteo", sources)
+        self.assertIn("copernicus-sentinel", sources)
+        self.assertEqual(sources["copernicus-sentinel"]["status"], "Catalog only")
+        self.assertIsInstance(data["jobs"], list)
+
+    def test_weather_asset_absence_is_explicit_and_region_validation_applies(self):
+        status, body = self.request("GET", "/api/data/weather/punjab")
+        self.assertEqual(status, 404)
+        self.assertIn("No weather asset", body["detail"])
+        status, _ = self.request("POST", "/api/data/weather/refresh", {
+            "region_id": "unknown",
+            "forecast_days": 7,
+        })
+        self.assertEqual(status, 404)
+
     def test_new_comparison_persists_without_fabricated_scores(self):
         body = {
             "region_id": "punjab",

@@ -16,6 +16,8 @@ from uuid import uuid4
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 
+from apps.api.asset_inventory import verify_asset_file
+
 
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env")
@@ -47,6 +49,7 @@ class ApiIntegrationTests(unittest.TestCase):
             cls.postgres_schema = None
             env.pop("AGRIFM_DB_SCHEMA", None)
             env["AGRIFM_DB_PATH"] = str(Path(cls.temp_dir.name) / "test.sqlite3")
+        env.pop("AGRIFM_ASSET_ROOT", None)
         cls.server = subprocess.Popen(
             [
                 sys.executable,
@@ -159,11 +162,27 @@ class ApiIntegrationTests(unittest.TestCase):
         status, data = self.request("GET", "/api/data/sources")
         self.assertEqual(status, 200)
         self.assertIs(data["is_demo"], False)
+        self.assertIn("assets", data)
         sources = {source["id"]: source for source in data["sources"]}
         self.assertIn("open-meteo", sources)
         self.assertIn("copernicus-sentinel", sources)
         self.assertEqual(sources["copernicus-sentinel"]["status"], "Catalog only")
         self.assertIsInstance(data["jobs"], list)
+
+    def test_readiness_explains_blocked_inputs_per_model_region_and_crop(self):
+        status, readiness = self.request("GET", "/api/data/readiness")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(readiness["items"]), 4 * 5 * 5)
+        item = readiness["items"][0]
+        self.assertEqual(
+            set(item["components"]),
+            {"checkpoint", "imagery", "labels", "split", "runtime"},
+        )
+        self.assertFalse(item["ready"])
+        self.assertEqual(item["components"]["imagery"]["status"], "missing")
+        self.assertTrue(item["components"]["imagery"]["reason"])
+        self.assertEqual(item["components"]["labels"]["status"], "blocked")
+        self.assertTrue(item["components"]["labels"]["reason"])
 
     def test_weather_asset_absence_is_explicit_and_region_validation_applies(self):
         status, body = self.request("GET", "/api/data/weather/punjab")
@@ -280,6 +299,30 @@ class ApiIntegrationTests(unittest.TestCase):
             payload = {**valid, **changes}
             status, body = self.request("POST", "/api/runs", payload)
             self.assertEqual(status, expected_status, (changes, body))
+
+
+class AssetVerificationTests(unittest.TestCase):
+    def test_hash_verification_uses_file_contents_and_reports_mismatch(self):
+        import hashlib
+
+        with tempfile.TemporaryDirectory(prefix="agrifm-asset-test-") as directory:
+            path = Path(directory) / "asset.bin"
+            path.write_bytes(b"verified")
+            asset = {
+                "target": "asset.bin",
+                "size_bytes": path.stat().st_size,
+                "sha256": hashlib.sha256(b"verified").hexdigest(),
+            }
+            verified = verify_asset_file(asset, Path(directory))
+            self.assertTrue(verified["exists"])
+            self.assertTrue(verified["hash_verified"])
+            self.assertEqual(verified["status"], "present")
+
+            asset["sha256"] = "0" * 64
+            mismatch = verify_asset_file(asset, Path(directory))
+            self.assertFalse(mismatch["hash_verified"])
+            self.assertEqual(mismatch["status"], "failed")
+            self.assertIn("SHA-256 mismatch", mismatch["reason"])
 
 
 class SegmentationMetricTests(unittest.TestCase):

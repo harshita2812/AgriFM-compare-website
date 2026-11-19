@@ -40,13 +40,13 @@ npx playwright install chromium
 npm run test:ui
 ```
 
-Open the Next.js URL (normally `http://localhost:3000`). FastAPI docs are available at `http://127.0.0.1:8000/docs`; API health check: `/api/health`. The Next.js development server proxies `/api/*` to FastAPI at `http://127.0.0.1:8000`; set `AGRIFM_API_ORIGIN` to override that origin. SQLite is created and seeded at `backend/agrifm.db` on first API startup. The database file is excluded from Git.
+Open the Next.js URL (normally `http://localhost:3000`). FastAPI docs are available at `http://127.0.0.1:8000/docs`; API health check: `/api/health`. The Next.js development server proxies `/api/*` to FastAPI at `http://127.0.0.1:8000`; set `AGRIFM_API_ORIGIN` to override that origin. SQLite is created and seeded at `backend/agrifm.db` on first API startup. The database file is excluded from Git. Copy `.env.example` to `.env` to configure the D: drive asset root; the database remains SQLite by default.
 
 The Next.js application is in `apps/web/app/`; FastAPI startup is in `apps/api/main.py`, its SQLAlchemy schema and connection layer are in `apps/api/models.py` and `apps/api/db.py`, and route groups are in `apps/api/routers/`. The prior Vite entry point remains available through `npm run dev:vite` and `npm run build:vite` for compatibility.
 
 ### Database
 
-The default database is SQLite at `backend/agrifm.db`; the API creates, migrates, and seeds it on startup. SQLAlchemy 2 and Alembic manage the schema, and the same API continues to work with SQLite. The database file is local and excluded from Git. Copy `.env.example` to `.env` only if you want to configure a non-default database URL.
+The default database is SQLite at `backend/agrifm.db`; the API creates, migrates, and seeds it on startup. SQLAlchemy 2 and Alembic manage the schema, and the same API continues to work with SQLite. The database file is local and excluded from Git. Edit `DATABASE_URL` in `.env` only if you want a non-default database URL.
 
 For PostgreSQL 16, install and initialize PostgreSQL separately, create an `agrifm` database, and set this value in `.env`:
 
@@ -67,13 +67,15 @@ $env:AGRIFM_ASSET_ROOT = "D:\AgriFM-assets"
 python scripts/fetch_assets.py --dry-run
 ```
 
-The current checkpoint-and-label plan is 3,615,967,939 bytes (3.37 GiB); the script also enforces an 80%-of-free-disk guard and verifies checksums. No assets are downloaded by default. After approving the plan, use `--download`, optionally with `--only` and a custom destination:
+The complete checkpoint-and-label plan was 3,615,967,939 bytes (3.37 GiB). The approved assets are now stored on D: and all five files passed SHA-256 verification; no checkpoint is copied into Git. The fetcher remains dry-run by default, enforces an 80%-of-free-disk guard, and registers future downloads as ingestion jobs. To fetch a later planned asset, review the dry run and then use `--download`, optionally with `--only`:
 
 ```powershell
 python scripts/fetch_assets.py --download --only resnet50-a1-in1k
 ```
 
 The locked CropHarvest labels are only a candidate: a streaming scan found 95,186 polygons and 2,742 feature centers in a coarse India bounding box, but that box includes neighboring countries. Its labels are binary plus generalized classes, not verified labels for the five study crops; exact regional overlap needs defined AOIs. Sentinel catalog entries currently declare a proprietary license and the Western-UP AOI needs correction, so no imagery is planned for download. WorldCover is land-cover reference data, not five-crop ground truth; Dynamic World requires Earth Engine access and is model-derived.
+
+When `AGRIFM_ASSET_ROOT` is configured, API startup registers fetched files in `data_sources`, `data_assets`, and `ingestion_jobs`. `GET /api/data/readiness` reports hash-verified checkpoints and missing/blocked inputs for each model, region, and crop; the Overview page displays the same status. APScheduler refreshes weather daily and re-verifies asset hashes weekly. An evaluation manifest is intentionally not activated until the task, labels, AOIs, and split protocol are approved; evaluation remains blocked.
 
 ## What works
 
@@ -95,7 +97,7 @@ This repository starts from a UI/product brief that did not include a complete l
 
 Runs can optionally store typed provenance declarations (such as dataset/label versions, acquisition dates, split details, model revisions, preprocessing, metric configuration, code revision, and runtime). These are user-supplied declarations, not independently verified evidence; the UI and CSV label them `declared_unverified`. Runs without declarations report `not_recorded`. Because no inference pipeline is connected, provenance cannot currently be verified against an actual evaluation.
 
-The app does not download satellite imagery, store uploads, train or load models, perform inference, or calculate metrics from ground-truth labels. Dataset catalog entries are marked `Metadata only` or `Reference`; none is currently available to this app for evaluation. The catalog is descriptive only, not an ingestion pipeline.
+The app does not download satellite imagery, store uploads, train models, perform inference, or calculate metrics from ground-truth labels. The standalone fetcher handles only pinned checkpoints and the CropHarvest label archive. Dataset catalog status is based on actual file and checksum verification; a downloaded candidate label file is not thereby considered suitable ground truth.
 
 The app compares 2–4 candidate models under the same selected region and crop context, but no ML pipeline is included in this repository. Add a documented, held-out evaluation pipeline before reporting performance results.
 

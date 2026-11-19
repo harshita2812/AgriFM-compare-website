@@ -10,9 +10,14 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from dotenv import load_dotenv
+
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK_PATH = ROOT / "assets.lock.json"
+load_dotenv(ROOT / ".env")
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 CHUNK_SIZE = 1024 * 1024
 LARGE_DOWNLOAD_BYTES = 2_000_000_000
 RETRIES = 4
@@ -220,17 +225,34 @@ def main() -> int:
         print("Dry-run only; no files were downloaded and the lock file was not changed.")
         return 0
 
+    os.environ["AGRIFM_ASSET_ROOT"] = str(asset_root)
+    from apps.api.asset_inventory import begin_asset_ingestion, finish_asset_ingestion
+    from apps.api.main import init_db
+
+    init_db()
     for asset, destination in plan:
-        sha256, fetched = download(asset, destination)
-        asset["sha256"] = sha256
-        timestamp = datetime.now(timezone.utc).isoformat()
-        asset["status"] = "downloaded_verified"
-        if fetched:
-            asset["fetched_at"] = timestamp
-        else:
-            asset["verified_at"] = timestamp
-        write_lock(args.lockfile, lock)
-        print(f"Verified {asset['id']}: sha256={sha256}")
+        entries = begin_asset_ingestion(asset, asset_root)
+        try:
+            sha256, fetched = download(asset, destination)
+            asset["sha256"] = sha256
+            timestamp = datetime.now(timezone.utc).isoformat()
+            asset["status"] = "downloaded_verified"
+            if fetched:
+                asset["fetched_at"] = timestamp
+            else:
+                asset["verified_at"] = timestamp
+            write_lock(args.lockfile, lock)
+            finish_asset_ingestion(asset, asset_root, entries, succeeded=True, sha256=sha256)
+            print(f"Verified {asset['id']}: sha256={sha256}")
+        except (OSError, ValueError, RuntimeError) as error:
+            finish_asset_ingestion(
+                asset,
+                asset_root,
+                entries,
+                succeeded=False,
+                error=str(error),
+            )
+            raise
     print("All selected assets downloaded and verified.")
     return 0
 

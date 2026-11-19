@@ -5,6 +5,8 @@ test("all primary sections, help, About disclaimer, and no-upload/no-PII boundar
   await page.goto("/");
   await expect(page.getByRole("status")).toContainText("DEMO DATA");
   await expect(page.locator(".project-card .muted, .student-card .muted")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Evaluation readiness" })).toBeVisible();
+  await expect(page.locator(".readiness-table tbody tr")).toHaveCount(4);
 
   const nav = page.locator(".nav-item");
   await nav.nth(3).click();
@@ -15,7 +17,7 @@ test("all primary sections, help, About disclaimer, and no-upload/no-PII boundar
   await nav.nth(4).click();
   await expect(page.getByRole("status")).toContainText("DEMO DATA");
   await expect(page.getByRole("heading", { name: "Datasets & imagery" })).toBeVisible();
-  await expect(page.locator(".dataset-panel tbody tr")).toHaveCount(4);
+  await expect(page.locator(".dataset-panel tbody tr")).toHaveCount(5);
   await expect(page.locator(".dataset-panel")).toContainText("Metadata only");
   await expect(page.locator(".dataset-panel")).not.toContainText("Ready");
 

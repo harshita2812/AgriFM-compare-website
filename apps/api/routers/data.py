@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from apps.api import main as core
+from apps.api.asset_inventory import build_readiness
 from apps.api.db import connect
 
 
@@ -20,7 +21,19 @@ def get_data_sources() -> dict[str, Any]:
         jobs = [dict(row) for row in conn.execute(
             "SELECT * FROM ingestion_jobs ORDER BY created_at DESC LIMIT 20"
         ).fetchall()]
-    return {"sources": sources, "jobs": jobs, "is_demo": False}
+        assets = []
+        for row in conn.execute(
+            "SELECT * FROM data_assets ORDER BY fetched_at DESC"
+        ).fetchall():
+            asset = dict(row)
+            asset["payload"] = json.loads(asset.pop("payload_json"))
+            assets.append(asset)
+    return {"sources": sources, "assets": assets, "jobs": jobs, "is_demo": False}
+
+
+@router.get("/api/data/readiness")
+def get_data_readiness() -> dict[str, Any]:
+    return build_readiness(core.MODELS, core.REGIONS, core.CROPS)
 
 
 @router.post("/api/data/weather/refresh")

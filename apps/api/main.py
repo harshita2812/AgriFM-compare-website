@@ -17,6 +17,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from apps.api.asset_inventory import sync_locked_assets
 from apps.api.db import connect, migrate_legacy_schema
 from apps.api.seed import seed_database
 
@@ -80,7 +81,7 @@ REGIONS = [
 
 CROPS = ["Wheat", "Rice", "Cotton", "Sugarcane", "Maize"]
 
-DatasetStatus = Literal["Metadata only", "Reference"]
+DatasetStatus = Literal["Metadata only", "Reference", "Downloaded & verified"]
 
 
 class DatasetRecord(TypedDict):
@@ -98,6 +99,7 @@ DATASETS: list[DatasetRecord] = [
     {"id": "sen1floods", "name": "Sen1Floods11", "provider": "NASA / ESA", "resolution": "10 m", "coverage": "Multi-region", "type": "SAR labels", "status": "Reference"},
     {"id": "s1s2", "name": "Sentinel-1 + Sentinel-2", "provider": "Copernicus / ESA", "resolution": "10 m", "coverage": "2017–present", "type": "SAR + optical", "status": "Metadata only"},
     {"id": "crop-calendar", "name": "Regional crop calendar", "provider": "Illustrative project metadata", "resolution": "District-level", "coverage": "India", "type": "Seasonal context", "status": "Reference"},
+    {"id": "cropharvest", "name": "CropHarvest labels (candidate)", "provider": "CropHarvest contributors", "resolution": "Mixed-source polygons", "coverage": "Global; exact study-region overlap unverified", "type": "Binary and generalized crop labels", "status": "Metadata only"},
 ]
 
 EVALUATION_BLOCK_REASON = (
@@ -110,6 +112,7 @@ def init_db() -> None:
     command.upgrade(Config(str(ROOT / "alembic.ini")), "head")
     migrate_legacy_schema()
     seed_database(MODELS, REGIONS, DATASETS, unevaluated_results)
+    sync_locked_assets()
 
 
 def unevaluated_results(model_ids: list[str]) -> list[dict[str, Any]]:
@@ -308,7 +311,13 @@ from apps.api.routers import catalog, data, evaluations
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     init_db()
-    yield
+    from apps.api.scheduling import start_scheduler
+
+    scheduler = start_scheduler()
+    try:
+        yield
+    finally:
+        scheduler.shutdown(wait=False)
 
 
 app = FastAPI(title="AgriFM Compare API", version="1.0.0", lifespan=lifespan)

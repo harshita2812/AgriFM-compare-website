@@ -42,7 +42,19 @@ npm run test:ui
 
 Open the Next.js URL (normally `http://localhost:3000`). FastAPI docs are available at `http://127.0.0.1:8000/docs`; API health check: `/api/health`. The Next.js development server proxies `/api/*` to FastAPI at `http://127.0.0.1:8000`; set `AGRIFM_API_ORIGIN` to override that origin. SQLite is created and seeded at `backend/agrifm.db` on first API startup. The database file is excluded from Git.
 
-The Next.js application is in `apps/web/app/`, and the FastAPI implementation is in `apps/api/`. The prior Vite entry point remains available through `npm run dev:vite` and `npm run build:vite` for compatibility.
+The Next.js application is in `apps/web/app/`; FastAPI startup is in `apps/api/main.py`, its SQLAlchemy schema and connection layer are in `apps/api/models.py` and `apps/api/db.py`, and route groups are in `apps/api/routers/`. The prior Vite entry point remains available through `npm run dev:vite` and `npm run build:vite` for compatibility.
+
+### Database
+
+The default database is SQLite at `backend/agrifm.db`; the API creates, migrates, and seeds it on startup. SQLAlchemy 2 and Alembic manage the schema, and the same API continues to work with SQLite. The database file is local and excluded from Git. Copy `.env.example` to `.env` only if you want to configure a non-default database URL.
+
+For PostgreSQL 16, install and initialize PostgreSQL separately, create an `agrifm` database, and set this value in `.env`:
+
+```text
+DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/agrifm
+```
+
+Apply the schema with `python -m alembic upgrade head`. To copy the existing local SQLite records, set the PostgreSQL URL in `.env` and run `python scripts/migrate_sqlite_to_postgres.py`. The migration is transactional, safe to rerun, checks each table's row count, and leaves `backend/agrifm.db` untouched. Do not use the example credentials as real credentials.
 
 ## What works
 

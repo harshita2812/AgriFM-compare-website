@@ -11,9 +11,14 @@ from contextlib import closing
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from uuid import uuid4
+
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
 
 
 ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(ROOT / ".env")
 
 
 class ApiIntegrationTests(unittest.TestCase):
@@ -25,7 +30,23 @@ class ApiIntegrationTests(unittest.TestCase):
             cls.port = sock.getsockname()[1]
         cls.base_url = f"http://127.0.0.1:{cls.port}"
         env = os.environ.copy()
-        env["AGRIFM_DB_PATH"] = str(Path(cls.temp_dir.name) / "test.sqlite3")
+        database_url = env.get("DATABASE_URL", "")
+        if database_url.startswith(("postgres://", "postgresql://", "postgresql+psycopg://")):
+            if database_url.startswith("postgres://"):
+                database_url = "postgresql+psycopg://" + database_url[len("postgres://"):]
+            elif database_url.startswith("postgresql://"):
+                database_url = "postgresql+psycopg://" + database_url[len("postgresql://"):]
+            cls.postgres_engine = create_engine(database_url, pool_pre_ping=True)
+            cls.postgres_schema = f"agrifm_test_{uuid4().hex}"
+            with cls.postgres_engine.begin() as connection:
+                connection.execute(text(f'CREATE SCHEMA "{cls.postgres_schema}"'))
+            env.pop("AGRIFM_DB_PATH", None)
+            env["AGRIFM_DB_SCHEMA"] = cls.postgres_schema
+        else:
+            cls.postgres_engine = None
+            cls.postgres_schema = None
+            env.pop("AGRIFM_DB_SCHEMA", None)
+            env["AGRIFM_DB_PATH"] = str(Path(cls.temp_dir.name) / "test.sqlite3")
         cls.server = subprocess.Popen(
             [
                 sys.executable,
@@ -63,6 +84,10 @@ class ApiIntegrationTests(unittest.TestCase):
             except subprocess.TimeoutExpired:
                 cls.server.kill()
                 cls.server.wait(timeout=5)
+        if cls.postgres_engine is not None:
+            with cls.postgres_engine.begin() as connection:
+                connection.execute(text(f'DROP SCHEMA "{cls.postgres_schema}" CASCADE'))
+            cls.postgres_engine.dispose()
         cls.temp_dir.cleanup()
 
     @classmethod
@@ -328,6 +353,7 @@ class LegacyDatabaseMigrationTests(unittest.TestCase):
                 port = sock.getsockname()[1]
             env = os.environ.copy()
             env["AGRIFM_DB_PATH"] = str(db_path)
+            env.pop("AGRIFM_DB_SCHEMA", None)
             server = subprocess.Popen(
                 [
                     sys.executable,

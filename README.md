@@ -73,7 +73,7 @@ The current checkpoint-and-label plan is 3,615,967,939 bytes (3.37 GiB); the scr
 python scripts/fetch_assets.py --download --only resnet50-a1-in1k
 ```
 
-The locked CropHarvest labels are only a candidate; India/region/crop overlap must be audited before evaluation. Sentinel catalog entries currently declare a proprietary license and the Western-UP AOI needs correction, so no imagery is planned for download. WorldCover is land-cover reference data, not five-crop ground truth; Dynamic World requires Earth Engine access and is model-derived.
+The locked CropHarvest labels are only a candidate: a streaming scan found 95,186 polygons and 2,742 feature centers in a coarse India bounding box, but that box includes neighboring countries. Its labels are binary plus generalized classes, not verified labels for the five study crops; exact regional overlap needs defined AOIs. Sentinel catalog entries currently declare a proprietary license and the Western-UP AOI needs correction, so no imagery is planned for download. WorldCover is land-cover reference data, not five-crop ground truth; Dynamic World requires Earth Engine access and is model-derived.
 
 ## What works
 

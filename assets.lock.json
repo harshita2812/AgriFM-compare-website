@@ -12,13 +12,13 @@
       "size_bytes": 1326658396,
       "sha256": "faab2c8b776f0723f93431747603a7ec586a54fc45473613b4322c29752486e7",
       "source_checksum": null,
-      "fetched_at": null,
+      "fetched_at": "2026-11-19T19:38:43.570913+00:00",
       "target": "models/prithvi-eo-2.0-300m.pt",
       "coverage": {
         "regions": "Global Earth-observation pretraining; no target-region performance asserted",
         "crops": "No crop-specific labels asserted"
       },
-      "status": "planned"
+      "status": "downloaded_verified"
     },
     {
       "id": "satmae-vit-base",
@@ -28,15 +28,15 @@
       "license_url": "https://zenodo.org/records/7338613",
       "revision": "Zenodo record 7338613, revision 2; SatMAE code commit 0b210aceb37a14bbbd897110db5b104b3271d818",
       "size_bytes": 1338694433,
-      "sha256": null,
+      "sha256": "cfce145a0c88ee7f85ab639158d2456319b264d1560185af4f8f021c79d4ed19",
       "source_checksum": "md5:1269e6a8255cee0affdeb6bb75776c86",
-      "fetched_at": null,
+      "fetched_at": "2026-11-19T19:49:10.173934+00:00",
       "target": "models/satmae-vit-base-pretrain-e199.pth",
       "coverage": {
         "regions": "fMoW-Sentinel pretraining; no Indian region-specific result asserted",
         "crops": "No Indian crop-type labels asserted"
       },
-      "status": "planned"
+      "status": "downloaded_verified"
     },
     {
       "id": "croma-base",
@@ -48,13 +48,13 @@
       "size_bytes": 777563846,
       "sha256": "0238d814b53108f3574bf1ea240e38a0a6edd46173816d9a6962070561893b63",
       "source_checksum": null,
-      "fetched_at": null,
+      "fetched_at": "2026-11-19T19:51:30.718888+00:00",
       "target": "models/croma-base.pt",
       "coverage": {
         "regions": "Global Sentinel-1/Sentinel-2 pretraining; no target-region performance asserted",
         "crops": "No crop-specific labels asserted"
       },
-      "status": "planned"
+      "status": "downloaded_verified"
     },
     {
       "id": "resnet50-a1-in1k",
@@ -66,13 +66,13 @@
       "size_bytes": 102469840,
       "sha256": "773525d5821de224f8f30c33377b7a795d7863e08522698200d3217d3f2a41bb",
       "source_checksum": null,
-      "fetched_at": null,
+      "fetched_at": "2026-11-19T19:51:50.268956+00:00",
       "target": "models/resnet50-a1-in1k.safetensors",
       "coverage": {
         "regions": "ImageNet-1k image-classification pretraining; not Indian geospatial data",
         "crops": "No crop-specific labels asserted"
       },
-      "status": "planned"
+      "status": "downloaded_verified"
     },
     {
       "id": "cropharvest-labels",
@@ -90,7 +90,7 @@
         "regions": "A streaming scan found 2,742 feature centers in a coarse 6-37N, 68-98E India bounding box (2,641 geowiki-landcover-2017; 101 croplands); this includes neighboring countries, so overlap with exact study AOIs remains unresolved",
         "crops": "Labels are binary is_crop plus generalized classes (for example cereals and sugar); no validated mapping to Wheat, Rice, Cotton, Sugarcane, and Maize"
       },
-      "status": "planned"
+      "status": "downloaded_verified"
     }
   ],
   "reference_sources": [

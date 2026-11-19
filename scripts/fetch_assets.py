@@ -16,6 +16,7 @@ LOCK_PATH = ROOT / "assets.lock.json"
 CHUNK_SIZE = 1024 * 1024
 LARGE_DOWNLOAD_BYTES = 2_000_000_000
 RETRIES = 4
+DOWNLOADABLE_STATUSES = {"planned", "downloaded_verified"}
 
 
 def format_size(size: int) -> str:
@@ -44,7 +45,7 @@ def checksum(path: Path, algorithm: str) -> str:
 def pending_assets(assets: list[dict], asset_root: Path) -> list[tuple[dict, Path]]:
     pending = []
     for asset in assets:
-        if asset.get("status") != "planned":
+        if asset.get("status") not in DOWNLOADABLE_STATUSES:
             continue
         destination = asset_path(asset_root, asset["target"])
         if destination.is_file() and destination.stat().st_size == asset["size_bytes"] and asset.get("sha256"):
@@ -196,14 +197,14 @@ def main() -> int:
         asset for asset in lock["assets"] + lock.get("reference_sources", [])
         if not selected_ids or asset["id"] in selected_ids
     ]
-    blocked = [asset["id"] for asset in chosen if asset.get("status") != "planned"]
+    blocked = [asset["id"] for asset in chosen if asset.get("status") not in DOWNLOADABLE_STATUSES]
     if selected_ids and blocked:
         reasons = [
             f"{asset['id']}: {asset.get('reason', asset.get('status'))}"
-            for asset in chosen if asset.get("status") != "planned"
+            for asset in chosen if asset.get("status") not in DOWNLOADABLE_STATUSES
         ]
         raise ValueError("Selected assets are not downloadable: " + "; ".join(reasons))
-    assets = [asset for asset in chosen if asset.get("status") == "planned"]
+    assets = [asset for asset in chosen if asset.get("status") in DOWNLOADABLE_STATUSES]
 
     asset_root = args.asset_root or Path(os.environ.get("AGRIFM_ASSET_ROOT", ROOT))
     asset_root = asset_root.resolve()
@@ -223,6 +224,7 @@ def main() -> int:
         sha256, fetched = download(asset, destination)
         asset["sha256"] = sha256
         timestamp = datetime.now(timezone.utc).isoformat()
+        asset["status"] = "downloaded_verified"
         if fetched:
             asset["fetched_at"] = timestamp
         else:

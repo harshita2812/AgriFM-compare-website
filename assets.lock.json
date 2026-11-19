@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "verified_at": "2026-11-20",
+  "assets": [
+    {
+      "id": "prithvi-300m",
+      "kind": "checkpoint",
+      "url": "https://huggingface.co/ibm-nasa-geospatial/Prithvi-EO-2.0-300M/resolve/9eb1b1102806593963daa333bcc491b1c6f8562f/Prithvi_EO_V2_300M.pt",
+      "license": "Apache-2.0",
+      "license_url": "https://huggingface.co/ibm-nasa-geospatial/Prithvi-EO-2.0-300M",
+      "revision": "9eb1b1102806593963daa333bcc491b1c6f8562f",
+      "size_bytes": 1326658396,
+      "sha256": "faab2c8b776f0723f93431747603a7ec586a54fc45473613b4322c29752486e7",
+      "source_checksum": null,
+      "fetched_at": null,
+      "target": "models/prithvi-eo-2.0-300m.pt",
+      "coverage": {
+        "regions": "Global Earth-observation pretraining; no target-region performance asserted",
+        "crops": "No crop-specific labels asserted"
+      },
+      "status": "planned"
+    },
+    {
+      "id": "satmae-vit-base",
+      "kind": "checkpoint",
+      "url": "https://zenodo.org/records/7338613/files/pretrain-vit-base-e199.pth?download=1",
+      "license": "CC-BY-4.0",
+      "license_url": "https://zenodo.org/records/7338613",
+      "revision": "Zenodo record 7338613, revision 2; SatMAE code commit 0b210aceb37a14bbbd897110db5b104b3271d818",
+      "size_bytes": 1338694433,
+      "sha256": null,
+      "source_checksum": "md5:1269e6a8255cee0affdeb6bb75776c86",
+      "fetched_at": null,
+      "target": "models/satmae-vit-base-pretrain-e199.pth",
+      "coverage": {
+        "regions": "fMoW-Sentinel pretraining; no Indian region-specific result asserted",
+        "crops": "No Indian crop-type labels asserted"
+      },
+      "status": "planned"
+    },
+    {
+      "id": "croma-base",
+      "kind": "checkpoint",
+      "url": "https://huggingface.co/antofuller/CROMA/resolve/0dd28e3d633bd6715856ae9890e8c49360040598/CROMA_base.pt",
+      "license": "MIT",
+      "license_url": "https://huggingface.co/antofuller/CROMA",
+      "revision": "0dd28e3d633bd6715856ae9890e8c49360040598",
+      "size_bytes": 777563846,
+      "sha256": "0238d814b53108f3574bf1ea240e38a0a6edd46173816d9a6962070561893b63",
+      "source_checksum": null,
+      "fetched_at": null,
+      "target": "models/croma-base.pt",
+      "coverage": {
+        "regions": "Global Sentinel-1/Sentinel-2 pretraining; no target-region performance asserted",
+        "crops": "No crop-specific labels asserted"
+      },
+      "status": "planned"
+    },
+    {
+      "id": "resnet50-a1-in1k",
+      "kind": "checkpoint",
+      "url": "https://huggingface.co/timm/resnet50.a1_in1k/resolve/767268603ca0cb0bfe326fa87277f19c419566ef/model.safetensors",
+      "license": "Apache-2.0",
+      "license_url": "https://huggingface.co/timm/resnet50.a1_in1k",
+      "revision": "767268603ca0cb0bfe326fa87277f19c419566ef",
+      "size_bytes": 102469840,
+      "sha256": "773525d5821de224f8f30c33377b7a795d7863e08522698200d3217d3f2a41bb",
+      "source_checksum": null,
+      "fetched_at": null,
+      "target": "models/resnet50-a1-in1k.safetensors",
+      "coverage": {
+        "regions": "ImageNet-1k image-classification pretraining; not Indian geospatial data",
+        "crops": "No crop-specific labels asserted"
+      },
+      "status": "planned"
+    },
+    {
+      "id": "cropharvest-labels",
+      "kind": "labels",
+      "url": "https://zenodo.org/records/7257688/files/labels.geojson?download=1",
+      "license": "CC-BY-SA-4.0",
+      "license_url": "https://zenodo.org/records/7257688",
+      "revision": "Zenodo record 7257688, revision 2",
+      "size_bytes": 70581424,
+      "sha256": "a37b1c9b8bb6fb5a1768cd0110e4beb0d0a8de2807e9b7d5f9c954a01ba41889",
+      "source_checksum": "md5:a065c6d975bbdcd6a5471ceed0b007f9",
+      "fetched_at": "2026-11-19T19:27:23.579366+00:00",
+      "target": "data/raw/cropharvest/labels.geojson",
+      "coverage": {
+        "regions": "A streaming scan found 2,742 feature centers in a coarse 6-37N, 68-98E India bounding box (2,641 geowiki-landcover-2017; 101 croplands); this includes neighboring countries, so overlap with exact study AOIs remains unresolved",
+        "crops": "Labels are binary is_crop plus generalized classes (for example cereals and sugar); no validated mapping to Wheat, Rice, Cotton, Sugarcane, and Maize"
+      },
+      "status": "planned"
+    }
+  ],
+  "reference_sources": [
+    {
+      "id": "sentinel-2-l2a-earth-search",
+      "url": "https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a",
+      "license": "STAC collection declares proprietary; underlying Sentinel terms need item-level resolution",
+      "revision": "Collection sentinel-2-l2a; item selection pending",
+      "size_bytes": null,
+      "sha256": null,
+      "fetched_at": null,
+      "coverage": "AOIs pending; existing Western Uttar Pradesh point is in Delhi/NCR",
+      "status": "blocked",
+      "reason": "No tile will be downloaded until the catalog license declaration and study AOIs are resolved."
+    },
+    {
+      "id": "sentinel-1-grd-earth-search",
+      "url": "https://earth-search.aws.element84.com/v1/collections/sentinel-1-grd",
+      "license": "STAC collection declares proprietary; underlying Sentinel terms need item-level resolution",
+      "revision": "Collection sentinel-1-grd; item selection pending",
+      "size_bytes": null,
+      "sha256": null,
+      "fetched_at": null,
+      "coverage": "AOIs pending; CROMA requires matching SAR and optical chips",
+      "status": "blocked",
+      "reason": "No tile will be downloaded until the catalog license declaration and study AOIs are resolved."
+    },
+    {
+      "id": "esa-worldcover-2021-v200",
+      "url": "https://zenodo.org/records/7254221",
+      "license": "CC-BY-4.0",
+      "revision": "ESA WorldCover 2021 v200, Zenodo record 7254221",
+      "size_bytes": null,
+      "sha256": null,
+      "fetched_at": null,
+      "coverage": "Global land-cover map; cropland class is not five-crop ground truth",
+      "status": "reference_only",
+      "reason": "Candidate only for a separately approved binary land-cover task, not crop-type evaluation."
+    },
+    {
+      "id": "dynamic-world-v1",
+      "url": "https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_DYNAMICWORLD_V1",
+      "license": "CC-BY-4.0",
+      "revision": "Dynamic World V1; per-image algorithm versions vary",
+      "size_bytes": null,
+      "sha256": null,
+      "fetched_at": null,
+      "coverage": "Global land-cover predictions; not independent ground-truth crop labels",
+      "status": "blocked_access",
+      "reason": "The catalog requires Google Earth Engine access; predictions are not independent reference labels."
+    }
+  ]
+}

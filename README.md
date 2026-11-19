@@ -56,6 +56,25 @@ DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/agrifm
 
 Apply the schema with `python -m alembic upgrade head`. To copy the existing local SQLite records, set the PostgreSQL URL in `.env` and run `python scripts/migrate_sqlite_to_postgres.py`. The migration is transactional, safe to rerun, checks each table's row count, and leaves `backend/agrifm.db` untouched. Do not use the example credentials as real credentials.
 
+### ML assets (Phase II)
+
+The optional CPU-compatible ML environment is defined in `requirements-ml.txt`. In Python 3.12, install it into the project virtual environment with `python -m pip install -r requirements-ml.txt`. This does not install GPU/CUDA packages.
+
+Asset URLs, pinned revisions, licenses, source checksums, and planned destinations are recorded in `assets.lock.json`. The CPU ML dependencies use several gigabytes on this laptop, so keep the model/data files on the larger D: drive. Review the complete plan and disk budget before downloading:
+
+```powershell
+$env:AGRIFM_ASSET_ROOT = "D:\AgriFM-assets"
+python scripts/fetch_assets.py --dry-run
+```
+
+The current checkpoint-and-label plan is 3,615,967,939 bytes (3.37 GiB); the script also enforces an 80%-of-free-disk guard and verifies checksums. No assets are downloaded by default. After approving the plan, use `--download`, optionally with `--only` and a custom destination:
+
+```powershell
+python scripts/fetch_assets.py --download --only resnet50-a1-in1k
+```
+
+The locked CropHarvest labels are only a candidate; India/region/crop overlap must be audited before evaluation. Sentinel catalog entries currently declare a proprietary license and the Western-UP AOI needs correction, so no imagery is planned for download. WorldCover is land-cover reference data, not five-crop ground truth; Dynamic World requires Earth Engine access and is model-derived.
+
 ## What works
 
 - Overview dashboard with summary metrics, latest-run chart, and saved comparison history.

@@ -5,6 +5,8 @@ apps/web/.next/
 __pycache__/
 *.py[cod]
 .venv/
+data/
+models/
 agrifm.db
 .env
 test-results/

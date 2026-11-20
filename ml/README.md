@@ -1,23 +1,30 @@
 # ML evaluation pipeline status
 
-The evaluation pipeline is blocked and only a manifest/job framework is implemented. This directory is not a runnable model package and produces no model metrics.
+## Approved protocol
 
-The workspace inventory found no authorized model checkpoints (`.pt`, `.pth`, `.ckpt`, or `.safetensors`), satellite imagery or ground-truth label assets, or documented split files. The project environment also lacks `torch`, `transformers`, `rasterio`, `geopandas`, `numpy`, and `scikit-learn`. The evaluation protocol and target compute requirements have not been supplied or verified.
+- Task: six-class semantic segmentation for Wheat, Rice, Cotton, Sugarcane, Maize, and other.
+- Outer evaluation: leave one of the five study regions out for testing, rotating the held-out region.
+- Inner validation: spatial-block cross-validation within each outer training set. Every sample manifest must provide a stable `spatial_block_id`; exact AOIs and block assignments are still pending.
+- Default mode: frozen encoder with a lightweight linear/UPerNet-lite segmentation head.
+- Shared seed: 42. Proposed metrics are per-class IoU/F1, mIoU, macro-F1, overall accuracy, 1,000-resample block-bootstrap 95% confidence intervals, and measured compute cost.
+- Model ranking is not permitted unless uncertainty intervals support a meaningful difference.
 
-Before implementing or running inference, provide:
+## Current asset and runtime status
 
-- Authorized checkpoint artifacts or their official, license-compatible source and revisions.
-- Corresponding imagery and ground-truth labels, with source, version, acquisition dates, and usage permissions.
-- The task definition, label schema, geographically held-out split, preprocessing rules, and metric aggregation protocol.
-- The supported runtime/compute environment and model-specific input/output requirements.
+The four pinned checkpoint files and CropHarvest label archive are present on the configured D: asset drive and passed SHA-256 verification. The local runtime has CPU-only PyTorch; no CUDA GPU is available. CropHarvest's generalized/binary labels do not establish ground truth for the five crop classes, and its exact overlap with study AOIs is unknown. No Sentinel imagery chips or approved split file are available. The Western Uttar Pradesh coordinate still needs correction to the intended study AOI.
 
-Until those prerequisites are available and validated, API runs remain `blocked`, all performance metrics remain `Not yet evaluated — Phase-II`, and no model ranking is produced.
+Accordingly, no `ml/manifest.json` is generated and `AGRIFM_EVALUATION_MANIFEST` remains unset. A verified file hash proves file identity only; it does not prove that the file is a suitable label source for this task.
 
-## Implemented framework
+## Implemented components
 
-- FastAPI evaluation-job endpoints create and track blocked jobs.
-- `evaluation.py` provides pure binary segmentation metric calculations for future, externally validated predictions and labels.
-- Supplied evaluation manifests may include dataset, labels, split, model artifact, metric, code, and runtime declarations.
-- Job execution validates manifest fields and asset paths and records a manifest SHA-256 when inventory is valid.
-- No model artifact is loaded and no inference is run by this framework.
-- Missing assets, runtime, backend, or manifest produce explicit blocked status and never a success-shaped result.
+- `evaluation.py` retains the binary metrics API and adds multiclass per-class IoU/F1, mIoU, macro-F1, overall accuracy, and deterministic spatial-block bootstrap confidence intervals.
+- `pipeline/splits.py` builds deterministic leave-one-region-out folds with inner spatial-block folds, checks group separation, and writes a canonical split file whose SHA-256 can be recorded.
+- API evaluation jobs remain blocked until a task-compatible imagery/label manifest and split exist. No model is loaded, inference is not run, and all saved performance metrics remain null.
+
+## Still blocked
+
+- Resolve the Sentinel catalog license declaration and obtain exact study AOIs, including the intended Western Uttar Pradesh location.
+- Obtain appropriately licensed, spatially aligned labels for the approved six classes.
+- Build and validate the imagery/label chip manifest and spatial-block IDs; only then can the split file and its hash be generated.
+- Implement and verify one consistent frozen-encoder adapter for each checkpoint. The current repository does not yet include model-specific inference adapters.
+- Run a real-chip smoke test and full evaluation only after all assets, hashes, adapter inputs, and runtime constraints are verified.

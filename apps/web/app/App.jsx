@@ -28,6 +28,7 @@ function App() {
   const [page, setPage] = useState("Overview");
   const [mobileNav, setMobileNav] = useState(false);
   const [data, setData] = useState(null);
+  const [readiness, setReadiness] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -44,13 +45,15 @@ function App() {
   const load = async () => {
     try {
       setError("");
-      const [dashboard, runData, datasetData, methodData] = await Promise.all([
-        request("/dashboard"), request("/runs"), request("/datasets"), request("/methodology")
+      const [dashboard, runData, datasetData, methodData, readinessData] = await Promise.all([
+        request("/dashboard"), request("/runs"), request("/datasets"), request("/methodology"),
+        request("/data/readiness")
       ]);
       setData(dashboard);
       setRuns(runData);
       setDatasets(datasetData);
       setMethodology(methodData);
+      setReadiness(readinessData);
       setActiveRun((current) => current || runData[0] || null);
     } catch (e) {
       setError(`${e.message}. Start the API with: uvicorn apps.api.main:app --reload`);
@@ -165,7 +168,7 @@ function App() {
           {error && <div className="error-banner"><CircleHelp size={17} /><span>{error}</span><button onClick={load}>Retry</button></div>}
           {notice && <div className="notice-banner"><Check size={16} /><span>{notice}</span><button aria-label="Dismiss" onClick={() => setNotice("")}><X size={15} /></button></div>}
           <div className="demo-banner" role="status"><strong>DEMO DATA</strong><span>Evaluation has not been run on ground-truth data. No model performance metrics are available.</span></div>
-          {page === "Overview" && <Overview data={data} runs={runs} onCompare={() => setPage("Compare")} onRunSelect={(run) => { selectRun(run); setPage("Compare"); }} />}
+          {page === "Overview" && <Overview data={data} runs={runs} readiness={readiness} onCompare={() => setPage("Compare")} onRunSelect={(run) => { selectRun(run); setPage("Compare"); }} />}
           {page === "Compare" && <Compare models={models} regions={regions} datasets={datasets} selectedModels={selectedModels} toggleModel={toggleModel} region={region} setRegion={setRegion} crop={crop} setCrop={setCrop} season={season} setSeason={setSeason} dataset={dataset} setDataset={setDataset} onRun={runComparison} busy={busy} run={activeRun} runs={runs} onRunSelect={selectRun} />}
           {page === "Farmer guide" && <FarmerGuide regions={regions} crops={data?.crops || ["Wheat", "Rice", "Cotton", "Sugarcane", "Maize"]} />}
           {page === "Model library" && <ModelLibrary models={models} onCompare={() => setPage("Compare")} onAddModel={addModelToComparison} />}
@@ -191,7 +194,7 @@ function metricText(value) {
   return Number.isFinite(value) ? value : NOT_EVALUATED;
 }
 
-function Overview({ data, runs, onCompare, onRunSelect }) {
+function Overview({ data, runs, readiness, onCompare, onRunSelect }) {
   const recent = runs.slice(0, 4);
   const latest = runs[0];
   const chartModels = (latest?.results || []).filter((result) => Number.isFinite(result.f1));
@@ -222,6 +225,7 @@ function Overview({ data, runs, onCompare, onRunSelect }) {
         <div className="caveat"><CircleHelp size={15} /><span>There are no measured research results. All model metrics remain unevaluated.</span></div>
       </section>
     </div>
+    <ReadinessTable readiness={readiness} />
     <section className="panel runs-panel">
       <div className="panel-heading"><div><h2>Recent comparisons</h2><p>Pick up where you left off</p></div><button className="text-button" onClick={onCompare}>View all <ArrowRight size={14} /></button></div>
       <div className="table-wrap"><table><thead><tr><th>RUN</th><th>REGION</th><th>CROP / SEASON</th><th>MODELS</th><th>TOP F1</th><th>DATE</th><th></th></tr></thead><tbody>
@@ -230,6 +234,44 @@ function Overview({ data, runs, onCompare, onRunSelect }) {
       </tbody></table></div>
     </section>
   </>;
+}
+
+function ReadinessTable({ readiness }) {
+  const [regionId, setRegionId] = useState("punjab");
+  const [crop, setCrop] = useState("Wheat");
+  const regions = readiness?.regions || [];
+  const crops = readiness?.crops || [];
+  const items = readiness?.items?.filter((item) => item.region_id === regionId && item.crop === crop) || [];
+  const keys = ["checkpoint", "imagery", "labels", "split", "runtime"];
+  const title = (value) => value.charAt(0).toUpperCase() + value.slice(1);
+  const label = (status) => status === "present" ? "Present" : status === "blocked" ? "Blocked" : status === "failed" ? "Failed" : status === "unverified" ? "Unverified" : "Missing";
+
+  return <section className="panel readiness-panel">
+    <div className="panel-heading">
+      <div><h2>Evaluation readiness</h2><p>File presence and hash verification for the selected region and crop.</p></div>
+      <div className="readiness-filters">
+        <label><span>Region</span><select value={regionId} onChange={(event) => setRegionId(event.target.value)}>{regions.map((region) => <option key={region.id} value={region.id}>{region.name}</option>)}</select></label>
+        <label><span>Crop</span><select value={crop} onChange={(event) => setCrop(event.target.value)}>{crops.map((value) => <option key={value}>{value}</option>)}</select></label>
+      </div>
+    </div>
+    {!readiness ? <div className="readiness-empty">Checking local assets…</div> : <div className="readiness-table-wrap">
+      <table className="readiness-table">
+        <thead><tr><th>MODEL</th>{keys.map((key) => <th key={key}>{title(key)}</th>)}</tr></thead>
+        <tbody>{items.map((item) => <tr key={item.model_id}>
+          <td><strong>{item.model_name}</strong></td>
+          {keys.map((key) => {
+            const component = item.components[key];
+            const hash = component.hash_verified === true ? " · SHA-256 verified" : component.hash_verified === false && component.exists ? " · hash not verified" : "";
+            return <td key={key}>
+              <span className={`readiness-status readiness-${component.status}`}>{label(component.status)}{hash}</span>
+              <small>{component.reason || "Verified file is available."}</small>
+            </td>;
+          })}
+        </tr>)}</tbody>
+      </table>
+      {!items.length && <div className="readiness-empty">No readiness rows are available for this selection.</div>}
+    </div>}
+  </section>;
 }
 
 function PerformanceChart({ results }) {

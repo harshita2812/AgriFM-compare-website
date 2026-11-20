@@ -11,9 +11,16 @@ from contextlib import closing
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from uuid import uuid4
+
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
+
+from apps.api.asset_inventory import verify_asset_file
 
 
 ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(ROOT / ".env")
 
 
 class ApiIntegrationTests(unittest.TestCase):
@@ -25,7 +32,24 @@ class ApiIntegrationTests(unittest.TestCase):
             cls.port = sock.getsockname()[1]
         cls.base_url = f"http://127.0.0.1:{cls.port}"
         env = os.environ.copy()
-        env["AGRIFM_DB_PATH"] = str(Path(cls.temp_dir.name) / "test.sqlite3")
+        database_url = env.get("DATABASE_URL", "")
+        if database_url.startswith(("postgres://", "postgresql://", "postgresql+psycopg://")):
+            if database_url.startswith("postgres://"):
+                database_url = "postgresql+psycopg://" + database_url[len("postgres://"):]
+            elif database_url.startswith("postgresql://"):
+                database_url = "postgresql+psycopg://" + database_url[len("postgresql://"):]
+            cls.postgres_engine = create_engine(database_url, pool_pre_ping=True)
+            cls.postgres_schema = f"agrifm_test_{uuid4().hex}"
+            with cls.postgres_engine.begin() as connection:
+                connection.execute(text(f'CREATE SCHEMA "{cls.postgres_schema}"'))
+            env.pop("AGRIFM_DB_PATH", None)
+            env["AGRIFM_DB_SCHEMA"] = cls.postgres_schema
+        else:
+            cls.postgres_engine = None
+            cls.postgres_schema = None
+            env.pop("AGRIFM_DB_SCHEMA", None)
+            env["AGRIFM_DB_PATH"] = str(Path(cls.temp_dir.name) / "test.sqlite3")
+        env.pop("AGRIFM_ASSET_ROOT", None)
         cls.server = subprocess.Popen(
             [
                 sys.executable,
@@ -63,6 +87,10 @@ class ApiIntegrationTests(unittest.TestCase):
             except subprocess.TimeoutExpired:
                 cls.server.kill()
                 cls.server.wait(timeout=5)
+        if cls.postgres_engine is not None:
+            with cls.postgres_engine.begin() as connection:
+                connection.execute(text(f'DROP SCHEMA "{cls.postgres_schema}" CASCADE'))
+            cls.postgres_engine.dispose()
         cls.temp_dir.cleanup()
 
     @classmethod
@@ -103,7 +131,7 @@ class ApiIntegrationTests(unittest.TestCase):
         for run in runs:
             self.assertIs(run.get("is_demo"), True)
             self.assertEqual(run.get("evaluation_status"), "blocked")
-            self.assertIn("No authorized model checkpoints", run.get("evaluation_reason", ""))
+            self.assertIn("task-compatible five-crop ground-truth labels", run.get("evaluation_reason", ""))
             expected_provenance_status = "declared_unverified" if run.get("provenance") else "not_recorded"
             self.assertEqual(run.get("provenance_status"), expected_provenance_status)
             for result in run["results"]:
@@ -134,11 +162,27 @@ class ApiIntegrationTests(unittest.TestCase):
         status, data = self.request("GET", "/api/data/sources")
         self.assertEqual(status, 200)
         self.assertIs(data["is_demo"], False)
+        self.assertIn("assets", data)
         sources = {source["id"]: source for source in data["sources"]}
         self.assertIn("open-meteo", sources)
         self.assertIn("copernicus-sentinel", sources)
         self.assertEqual(sources["copernicus-sentinel"]["status"], "Catalog only")
         self.assertIsInstance(data["jobs"], list)
+
+    def test_readiness_explains_blocked_inputs_per_model_region_and_crop(self):
+        status, readiness = self.request("GET", "/api/data/readiness")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(readiness["items"]), 4 * 5 * 5)
+        item = readiness["items"][0]
+        self.assertEqual(
+            set(item["components"]),
+            {"checkpoint", "imagery", "labels", "split", "runtime"},
+        )
+        self.assertFalse(item["ready"])
+        self.assertEqual(item["components"]["imagery"]["status"], "missing")
+        self.assertTrue(item["components"]["imagery"]["reason"])
+        self.assertEqual(item["components"]["labels"]["status"], "blocked")
+        self.assertTrue(item["components"]["labels"]["reason"])
 
     def test_weather_asset_absence_is_explicit_and_region_validation_applies(self):
         status, body = self.request("GET", "/api/data/weather/punjab")
@@ -257,6 +301,30 @@ class ApiIntegrationTests(unittest.TestCase):
             self.assertEqual(status, expected_status, (changes, body))
 
 
+class AssetVerificationTests(unittest.TestCase):
+    def test_hash_verification_uses_file_contents_and_reports_mismatch(self):
+        import hashlib
+
+        with tempfile.TemporaryDirectory(prefix="agrifm-asset-test-") as directory:
+            path = Path(directory) / "asset.bin"
+            path.write_bytes(b"verified")
+            asset = {
+                "target": "asset.bin",
+                "size_bytes": path.stat().st_size,
+                "sha256": hashlib.sha256(b"verified").hexdigest(),
+            }
+            verified = verify_asset_file(asset, Path(directory))
+            self.assertTrue(verified["exists"])
+            self.assertTrue(verified["hash_verified"])
+            self.assertEqual(verified["status"], "present")
+
+            asset["sha256"] = "0" * 64
+            mismatch = verify_asset_file(asset, Path(directory))
+            self.assertFalse(mismatch["hash_verified"])
+            self.assertEqual(mismatch["status"], "failed")
+            self.assertIn("SHA-256 mismatch", mismatch["reason"])
+
+
 class SegmentationMetricTests(unittest.TestCase):
     def test_binary_metrics_are_calculated_from_predictions_and_labels(self):
         from ml.evaluation import segmentation_metrics
@@ -328,6 +396,7 @@ class LegacyDatabaseMigrationTests(unittest.TestCase):
                 port = sock.getsockname()[1]
             env = os.environ.copy()
             env["AGRIFM_DB_PATH"] = str(db_path)
+            env.pop("AGRIFM_DB_SCHEMA", None)
             server = subprocess.Popen(
                 [
                     sys.executable,

@@ -152,16 +152,21 @@ def get_methodology() -> dict[str, Any]:
     return {
         "is_demo": True,
         "metrics": [
-            {"name": "F1 score", "unit": "%", "description": "Harmonic mean of precision and recall; proposed as a primary ranking metric after a documented evaluation, but not currently calculated or used to rank models."},
-            {"name": "Intersection over Union", "unit": "%", "description": "Overlap between predicted and reference crop masks."},
-            {"name": "Overall accuracy", "unit": "%", "description": "Fraction of correctly classified pixels across the evaluation sample."},
+            {"name": "Per-class IoU and mIoU", "unit": "%", "description": "Overlap for each of the five crop classes and other, with mean IoU proposed for the approved segmentation task; not currently calculated or used to rank models."},
+            {"name": "Per-class F1 and macro F1", "unit": "%", "description": "Harmonic mean of precision and recall for each class and their macro average; proposed, but not currently calculated or used to rank models."},
+            {"name": "Overall accuracy", "unit": "%", "description": "Fraction of correctly classified pixels across the evaluation sample; proposed, but not currently calculated."},
+            {"name": "Bootstrap confidence intervals", "unit": "95% CI", "description": "Planned 1,000-resample spatial-block bootstrap intervals; not calculated until verified held-out data are available."},
+            {"name": "Compute cost", "unit": "parameters, FLOPs, seconds/hectare", "description": "Planned measured resource cost under the documented CPU runtime; no measurements are currently available."},
             {"name": "Cohen's kappa", "unit": "0–1", "description": "Chance-corrected agreement between predictions and reference labels."},
             {"name": "Inference time", "unit": "ms / tile", "description": "Report only after measuring with documented hardware, batch size, and runtime conditions."},
         ],
         "protocol": [
             "Choose a region, crop, season, dataset, and at least two candidate models.",
             "The same region and crop context is applied to every selected model for a within-run comparison.",
-            "This prototype does not execute models; performance metrics remain unevaluated until Phase-II.",
+            "The approved task is six-class semantic segmentation: Wheat, Rice, Cotton, Sugarcane, Maize, and other.",
+            "The proposed split is leave-one-region-out with spatial-block cross-validation; block assignments and AOIs are not yet available.",
+            "The CPU-friendly default is a frozen encoder with a lightweight segmentation head, using shared seed 42.",
+            "This prototype does not execute model inference; performance metrics remain unevaluated until Phase-II.",
             "For a publishable result, calculate metrics on a documented, held-out, ground-truth-labelled dataset.",
         ],
     }

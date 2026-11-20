@@ -103,8 +103,9 @@ DATASETS: list[DatasetRecord] = [
 ]
 
 EVALUATION_BLOCK_REASON = (
-    "This checkout has no wired inference pipeline. No authorized model checkpoints, "
-    "ground-truth agricultural labels, or documented split protocol were found; inference was not run."
+    "Evaluation is blocked: task-compatible five-crop ground-truth labels and verified Sentinel "
+    "imagery chips are unavailable, the Western-UP AOI and spatial-block assignments are unresolved, "
+    "and model inference adapters are not implemented. No inference has been run; performance metrics remain null."
 )
 
 

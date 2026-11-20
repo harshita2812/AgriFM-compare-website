@@ -131,7 +131,7 @@ class ApiIntegrationTests(unittest.TestCase):
         for run in runs:
             self.assertIs(run.get("is_demo"), True)
             self.assertEqual(run.get("evaluation_status"), "blocked")
-            self.assertIn("No authorized model checkpoints", run.get("evaluation_reason", ""))
+            self.assertIn("task-compatible five-crop ground-truth labels", run.get("evaluation_reason", ""))
             expected_provenance_status = "declared_unverified" if run.get("provenance") else "not_recorded"
             self.assertEqual(run.get("provenance_status"), expected_provenance_status)
             for result in run["results"]:

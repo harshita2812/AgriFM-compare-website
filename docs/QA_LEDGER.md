@@ -2,6 +2,26 @@
 
 ## Scope and evidence
 
+### Phase 4 — approved protocol and evaluation foundations (2026-11-20)
+
+- Approved six-class task: Wheat, Rice, Cotton, Sugarcane, Maize, and other.
+- Approved outer leave-one-region-out split with inner spatial-block cross-validation; shared seed 42.
+- Added multiclass per-class IoU/F1, mIoU, macro-F1, overall accuracy, and deterministic block-bootstrap 95% confidence intervals.
+- Added deterministic split generation, group-leakage checks, canonical serialization, and split SHA-256 support.
+- Updated API, methodology, and documentation to describe the actual blockers rather than claiming checkpoints or runtime are absent.
+- No evaluation manifest, model inference, or performance result was generated; imagery, compatible labels, AOIs/block assignments, and adapters remain unavailable.
+
+Latest Phase 4 validation:
+
+| Command | Result | Exit code |
+|---|---:|---:|
+| `.venv\Scripts\python.exe -m unittest discover -s tests -p test_evaluation.py -v` | 6 passed, 0 failed | 0 |
+| `npm.cmd run test:api` | 22 passed, 0 failed/errors | 0 |
+| `npm.cmd run test:ui` | 10 passed, 0 failed | 0 |
+| `npm.cmd run build` | Next.js production build passed | 0 |
+| `.venv\Scripts\python.exe -m compileall ml\evaluation.py ml\pipeline apps\api` | Passed | 0 |
+| `git diff --check` | Passed | 0 |
+
 ### Phase 1 — automatic data foundation (2026-11-19)
 
 Implemented the first live-data integration slice:
@@ -42,7 +62,7 @@ Implemented:
 - `POST /api/evaluations/jobs/{id}/execute` for explicit manifest and asset validation.
 - `GET /api/evaluations/jobs` for job history and status.
 - SHA-256 manifest capture only after a supplied manifest passes field and asset-path validation.
-- Pure binary segmentation metric calculations in `ml/evaluation.py`.
+- Pure binary metrics remain supported in `ml/evaluation.py`; multiclass metrics and spatial-block bootstrap are also implemented.
 - Tests proving blocked jobs remain blocked, arrays are validated, and metric helpers do not fabricate model results.
 
 Latest phase validation:
@@ -71,7 +91,7 @@ Latest phase validation:
 | Playwright UI suite | 10 passed, 0 failed | 0 |
 | Next.js production build | Passed | 0 |
 
-This ledger covers the repository as updated for the five audited gaps: Next.js (`apps/web/`), FastAPI (`apps/api/`), and the retained Vite compatibility entry point (`src/`). `ml/` contains blocker documentation only; a real inference/evaluation pipeline and its required assets are unavailable.
+This ledger covers the repository as updated for the audited gaps: Next.js (`apps/web/`), FastAPI (`apps/api/`), and the retained Vite compatibility entry point (`src/`). `ml/` contains metric and geographic-split foundations; an end-to-end inference pipeline and compatible evaluation data are still unavailable.
 
 Final validation (all commands run from the project root):
 
@@ -97,7 +117,7 @@ During test-first work, the new API assertions first failed against the pre-fix 
 | NAV-01 | Sidebar | Overview | Opens the overview page | Opens dashboard | PASS | `tests/e2e/app.spec.js` — overview entry points |
 | NAV-02 | Sidebar | Compare models | Opens comparison workspace | Opens comparison workspace | PASS | `tests/e2e/app.spec.js` — model library add actions |
 | NAV-03 | Sidebar | Model library | Opens model registry | Opens registry; add actions select the chosen model | FIXED | `tests/e2e/app.spec.js` — model library add actions |
-| NAV-04 | Sidebar | Datasets | Opens dataset catalog | Opens catalog with four rows | PASS | `tests/e2e/app.spec.js` — all primary sections |
+| NAV-04 | Sidebar | Datasets | Opens dataset catalog | Opens catalog with five rows | PASS | `tests/e2e/app.spec.js` — all primary sections |
 | NAV-05 | Sidebar | Methodology | Opens methodology/About content | Opens methodology with project disclaimer | PASS | `tests/e2e/app.spec.js` — all primary sections |
 | NAV-06 | Responsive sidebar | Open navigation | Sidebar is off-canvas at smaller widths and opens from the menu button | Hidden at 900px and 390px; opens on demand | PASS | `tests/e2e/app.spec.js` — responsive navigation |
 | NAV-07 | Responsive sidebar | Close navigation | Closes the drawer and keeps it off-canvas | Closes and remains hidden at 900px and 390px | PASS | `tests/e2e/app.spec.js` — responsive navigation |
@@ -156,4 +176,4 @@ During test-first work, the new API assertions first failed against the pre-fix 
 
 ### Blocked items — required input
 
-To unblock GAP-02 and complete verified evaluation provenance for GAP-03, provide authorized model checkpoints and their revisions, corresponding imagery and ground-truth labels with permissions and versions, the task/label schema, held-out geographic split and protocol, preprocessing/metric definitions, and a supported runtime/compute environment. No inference or model performance claim is made by this workspace.
+To unblock GAP-02 and complete verified evaluation provenance for GAP-03, provide/resolve licensed Sentinel imagery and exact study AOIs, task-compatible five-crop ground-truth labels with versions and permissions, stable spatial-block assignments, and validated adapters for the pinned checkpoints. The task, broad split protocol, metric defaults, seed 42, checkpoint hashes, and CPU runtime are now recorded. No inference or model performance claim is made by this workspace.

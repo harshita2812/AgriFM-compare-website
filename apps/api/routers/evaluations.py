@@ -23,8 +23,8 @@ def create_evaluation_job(request: core.RunRequest) -> dict[str, Any]:
     job_id = str(uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
     detail = (
-        "Evaluation blocked: no supplied manifest or authorized assets were found. "
-        "No model was loaded and no metrics were calculated."
+        "Evaluation blocked: no verified evaluation manifest, task-compatible labels, imagery chips, "
+        "or saved spatial split are available. No model was loaded and no metrics were calculated."
     )
     provenance = request.provenance.model_dump(mode="json", exclude_none=True) if request.provenance else None
     with closing(connect()) as conn:
@@ -88,7 +88,7 @@ def execute_evaluation_job(job_id: str) -> dict[str, Any]:
     if not manifest_path:
         detail = (
             "Evaluation blocked: AGRIFM_EVALUATION_MANIFEST is not configured. "
-            "No authorized checkpoints or labels were supplied."
+            "Task-compatible labels, imagery chips, and a saved spatial split are unavailable."
         )
     else:
         path = Path(manifest_path)

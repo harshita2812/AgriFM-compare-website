@@ -75,7 +75,7 @@ python scripts/fetch_assets.py --download --only resnet50-a1-in1k
 
 The locked CropHarvest labels are only a candidate: a streaming scan found 95,186 polygons and 2,742 feature centers in a coarse India bounding box, but that box includes neighboring countries. Its labels are binary plus generalized classes, not verified labels for the five study crops; exact regional overlap needs defined AOIs. Sentinel catalog entries currently declare a proprietary license and the Western-UP AOI needs correction, so no imagery is planned for download. WorldCover is land-cover reference data, not five-crop ground truth; Dynamic World requires Earth Engine access and is model-derived.
 
-When `AGRIFM_ASSET_ROOT` is configured, API startup registers fetched files in `data_sources`, `data_assets`, and `ingestion_jobs`. `GET /api/data/readiness` reports hash-verified checkpoints and missing/blocked inputs for each model, region, and crop; the Overview page displays the same status. APScheduler refreshes weather daily and re-verifies asset hashes weekly. An evaluation manifest is intentionally not activated until the task, labels, AOIs, and split protocol are approved; evaluation remains blocked.
+When `AGRIFM_ASSET_ROOT` is configured, API startup registers fetched files in `data_sources`, `data_assets`, and `ingestion_jobs`. `GET /api/data/readiness` reports hash-verified checkpoints and missing/blocked inputs for each model, region, and crop; the Overview page displays the same status. APScheduler refreshes weather daily and re-verifies asset hashes weekly. The task and broad split protocol are approved, but no evaluation manifest is activated until compatible imagery and labels, exact AOIs, and spatial-block assignments exist; evaluation remains blocked.
 
 ## What works
 
@@ -99,11 +99,11 @@ Runs can optionally store typed provenance declarations (such as dataset/label v
 
 The app does not download satellite imagery, store uploads, train models, perform inference, or calculate metrics from ground-truth labels. The standalone fetcher handles only pinned checkpoints and the CropHarvest label archive. Dataset catalog status is based on actual file and checksum verification; a downloaded candidate label file is not thereby considered suitable ground truth.
 
-The app compares 2–4 candidate models under the same selected region and crop context, but no ML pipeline is included in this repository. Add a documented, held-out evaluation pipeline before reporting performance results.
+The app compares 2–4 candidate models under the same selected region and crop context. Multiclass metric and deterministic split utilities are implemented, but no end-to-end inference pipeline or model-specific adapters are connected. Do not report performance results until verified imagery, task-compatible labels, spatial splits, and supported adapters exist.
 
 ## QA scope
 
-The delivered web application is Next.js in `apps/web/`; the FastAPI service is in `apps/api/`. The `ml/` directory documents, but does not implement, the blocked evaluation pipeline. No authorized model checkpoints, ground-truth agricultural labels, documented split protocol, or supported ML runtime are included in this repository. Do not report performance results until those inputs and a documented evaluation protocol are provided.
+The delivered web application is Next.js in `apps/web/`; the FastAPI service is in `apps/api/`. The `ml/` directory contains multiclass metric and geographic split utilities, but the end-to-end evaluation pipeline remains blocked. The four pinned checkpoints and CPU runtime are available locally; task-compatible ground-truth labels, imagery chips, exact AOIs/spatial-block assignments, and model-specific adapters are not. Do not report performance results until those inputs and a documented evaluation protocol are verified.
 
 The API tests start an isolated temporary SQLite database and exercise real HTTP routes, including provenance validation/persistence and migrations of the former demo-score schema. The Playwright tests exercise the live Next.js frontend and backend, including blocked evaluation/provenance display, comparison persistence, error recovery, and CSV download. The prior Vite build remains available for compatibility; it is development tooling and is not used by the Next.js app.
 
@@ -113,5 +113,6 @@ The latest implementation adds:
 
 - Live Open-Meteo weather ingestion, SQLite caching, ingestion job state, and data-source status APIs.
 - A farmer-facing weather guide with English/Hindi copy and planning-only disclaimers.
-- Asset-gated evaluation jobs and a pure segmentation-metric helper module.
-- Explicit blocked results while authorized checkpoints, labels, a geographic split, and a supported inference backend remain unavailable.
+- Verified asset inventory, readiness reporting, and scheduled asset re-verification.
+- Asset-gated evaluation jobs, multiclass metrics, block-bootstrap confidence intervals, and geographic split utilities.
+- Explicit blocked results while task-compatible labels, imagery, AOIs, split files, and supported inference adapters remain unavailable.

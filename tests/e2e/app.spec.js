@@ -128,7 +128,7 @@ test("comparison controls save context only, show Phase-II placeholders, and exp
   await expect(page.locator(".unmeasured-chart")).toContainText("Not yet evaluated — Phase-II");
   await expect(page.locator(".context-panel")).toContainText("Maharashtra");
   await expect(page.locator(".context-panel")).toContainText("Evaluation blocked");
-  await expect(page.locator(".context-panel")).toContainText("No authorized model checkpoints");
+  await expect(page.locator(".context-panel")).toContainText("task-compatible five-crop ground-truth labels");
   await expect(page.locator(".provenance-panel")).toContainText("No provenance was recorded because inference was not run");
 
   const [download] = await Promise.all([

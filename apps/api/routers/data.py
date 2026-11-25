@@ -7,9 +7,18 @@ from fastapi import APIRouter, HTTPException
 from apps.api import main as core
 from apps.api.asset_inventory import build_readiness
 from apps.api.db import connect
+from ml.crop_recommendation import predict as recommend_crop
 
 
 router = APIRouter()
+
+
+@router.post("/api/crop/recommend")
+def recommend_crop_for_conditions(request: core.CropRecommendationRequest) -> dict[str, Any]:
+    prediction = recommend_crop(request.model_dump())
+    if not prediction["available"]:
+        raise HTTPException(status_code=503, detail=prediction["error"])
+    return prediction
 
 
 @router.get("/api/data/sources")

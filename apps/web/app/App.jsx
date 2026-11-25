@@ -299,6 +299,9 @@ function FarmerGuide({ regions, crops }) {
   const [advisory, setAdvisory] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [soil, setSoil] = useState({ nitrogen: 90, phosphorus: 42, potassium: 43, temperature: 24, humidity: 82, ph: 6.5, rainfall: 200 });
+  const [recommendation, setRecommendation] = useState(null);
+  const [recommendBusy, setRecommendBusy] = useState(false);
 
   const loadGuidance = async () => {
     setBusy(true);
@@ -316,6 +319,21 @@ function FarmerGuide({ regions, crops }) {
     }
   };
 
+  const recommendCrop = async () => {
+    setRecommendBusy(true);
+    setError("");
+    try {
+      setRecommendation(await request("/crop/recommend", {
+        method: "POST",
+        body: JSON.stringify(soil),
+      }));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setRecommendBusy(false);
+    }
+  };
+
   return <>
     <PageHeading eyebrow="FARMER WEATHER GUIDE" title={language === "hi" ? "मौसम आधारित फसल योजना" : "Weather-based crop planning"} subtitle={language === "hi" ? "मौसम पूर्वानुमान को सरल रोज़मर्रा की योजना में बदलें।" : "Turn a 7-day public weather forecast into simple planning guidance."} />
     {error && <div className="error-banner"><CircleHelp size={17} /><span>{error}</span><button onClick={loadGuidance}>Retry</button></div>}
@@ -330,6 +348,49 @@ function FarmerGuide({ regions, crops }) {
         <label className="field"><span>{language === "hi" ? "भाषा" : "Language"}</span><div className="select-wrap"><Languages size={15} /><select value={language} onChange={(e) => setLanguage(e.target.value)}><option value="en">English</option><option value="hi">हिंदी</option></select><ChevronDown size={14} /></div></label>
       </div>
       <button className="button primary farmer-load" disabled={busy} onClick={loadGuidance}>{busy ? <><span className="spinner" /> {language === "hi" ? "पूर्वानुमान ले रहे हैं…" : "Loading forecast…"}</> : <><CloudSun size={16} /> {language === "hi" ? "7-दिन की सलाह देखें" : "Get 7-day guidance"}</>}</button>
+    </section>
+    <section className="panel farmer-controls">
+      <div className="panel-heading">
+        <div><h2>{language === "hi" ? "मिट्टी व मौसम से फसल सुझाव" : "Soil and climate crop recommendation"}</h2><p>{language === "hi" ? "प्रशिक्षित 22-फसल वर्गीकरण मॉडल" : "Prediction from the trained 22-crop classifier"}</p></div>
+        <Sprout size={18} />
+      </div>
+      <div className="form-grid">
+        {[
+          ["nitrogen", "Nitrogen (N)", 300],
+          ["phosphorus", "Phosphorus (P)", 300],
+          ["potassium", "Potassium (K)", 300],
+          ["temperature", "Temperature (C)", 60],
+          ["humidity", "Humidity (%)", 100],
+          ["ph", "Soil pH", 14],
+          ["rainfall", "Rainfall (mm)", 1000],
+        ].map(([key, label, max]) => (
+          <label className="field" key={key}>
+            <span>{language === "hi" ? label : label}</span>
+            <input
+              type="number"
+              min="0"
+              max={max}
+              step={key === "temperature" || key === "ph" ? "0.1" : "1"}
+              value={soil[key]}
+              onChange={(event) => setSoil((current) => ({ ...current, [key]: Number(event.target.value) }))}
+            />
+          </label>
+        ))}
+      </div>
+      <button className="button primary farmer-load" disabled={recommendBusy} onClick={recommendCrop}>
+        {recommendBusy ? "Predicting…" : "Recommend crop"}
+      </button>
+      {recommendation && (
+        <div className="caveat">
+          <Sprout size={15} />
+          <span>
+            Recommended: <strong>{recommendation.recommended_crop}</strong>
+            {" "}({Math.round(recommendation.confidence * 100)}% model confidence).
+            Holdout accuracy: {Math.round(recommendation.model.test_accuracy * 100)}%.
+            {recommendation.alternatives.length > 0 && ` Alternatives: ${recommendation.alternatives.map((item) => item.crop).join(", ")}.`}
+          </span>
+        </div>
+      )}
     </section>
     {advisory && <>
       <div className="farmer-summary-grid">

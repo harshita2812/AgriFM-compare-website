@@ -17,8 +17,10 @@ test("all primary sections, help, About disclaimer, and no-upload/no-PII boundar
   await nav.nth(4).click();
   await expect(page.getByRole("status")).toContainText("DEMO DATA");
   await expect(page.getByRole("heading", { name: "Datasets & imagery" })).toBeVisible();
-  await expect(page.locator(".dataset-panel tbody tr")).toHaveCount(5);
+  await expect(page.locator(".dataset-panel tbody tr")).toHaveCount(6);
   await expect(page.locator(".dataset-panel")).toContainText("Metadata only");
+  await expect(page.locator(".dataset-panel")).toContainText("SICKLE (reference)");
+  await expect(page.locator(".dataset-panel")).toContainText("Reference");
   await expect(page.locator(".dataset-panel")).not.toContainText("Ready");
 
   await nav.nth(5).click();

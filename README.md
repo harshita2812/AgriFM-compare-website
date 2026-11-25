@@ -101,11 +101,50 @@ The app does not download satellite imagery, store uploads, train models, perfor
 
 The app compares 2–4 candidate models under the same selected region and crop context. Multiclass metric and deterministic split utilities are implemented, but no end-to-end inference pipeline or model-specific adapters are connected. Do not report performance results until verified imagery, task-compatible labels, spatial splits, and supported adapters exist.
 
+### SICKLE dataset reference
+
+The [SICKLE repository](https://github.com/Depanshu-Sani/SICKLE) describes a multi-sensor satellite dataset for the Cauvery Delta in Tamil Nadu, covering January 2018–March 2021. Its paper reports 388 surveyed plots, 2,370 time-series samples, about 209,000 satellite images, 21 crop types, and annotations at 3 m, 10 m, and 30 m. It combines Landsat-8, Sentinel-1, and Sentinel-2 data and includes crop type, variety, growing season, and yield information. The repository's benchmark code evaluates binary paddy-vs-non-paddy mapping as well as sowing, transplanting, harvest-date, and yield tasks.
+
+The repository does not contain the dataset files. Access to the full and toy data is requested through the authors' [dataset access form](https://docs.google.com/forms/d/e/1FAIpQLSdq7Dcj5FF1VmlKozrQ7XNoq006iVKrUIMTK2jReBJDuO1N2g/viewform). AgriFM Compare lists SICKLE as a reference only; it is not downloaded, and its availability, license for the acquired files, and label alignment have not been independently verified. Its single Tamil Nadu study area and binary paddy benchmark do not satisfy this project's five-region, six-class task (Wheat, Rice, Cotton, Sugarcane, Maize, and other). Do not use it as evaluation ground truth or report comparative scores without obtaining authorized files and documenting a suitable, compatible label mapping and spatial split.
+
+Citation: Depanshu Sani et al., “SICKLE: A Multi-Sensor Satellite Imagery Dataset Annotated With Multiple Key Cropping Parameters,” WACV 2024, pp. 5995–6004. See the [paper](https://openaccess.thecvf.com/content/WACV2024/html/Sani_SICKLE_A_Multi-Sensor_Satellite_Imagery_Dataset_Annotated_With_Multiple_Key_WACV_2024_paper.html) and the repository's citation block for the full BibTeX entry.
+
 ## QA scope
 
 The delivered web application is Next.js in `apps/web/`; the FastAPI service is in `apps/api/`. The `ml/` directory contains multiclass metric and geographic split utilities, but the end-to-end evaluation pipeline remains blocked. The four pinned checkpoints and CPU runtime are available locally; task-compatible ground-truth labels, imagery chips, exact AOIs/spatial-block assignments, and model-specific adapters are not. Do not report performance results until those inputs and a documented evaluation protocol are verified.
 
 The API tests start an isolated temporary SQLite database and exercise real HTTP routes, including provenance validation/persistence and migrations of the former demo-score schema. The Playwright tests exercise the live Next.js frontend and backend, including blocked evaluation/provenance display, comparison persistence, error recovery, and CSV download. The prior Vite build remains available for compatibility; it is development tooling and is not used by the Next.js app.
+
+## Trained crop recommendation model
+
+The 2,200-row [crop dataset](/c:/Users/HARSHITA/Downloads/crop_dataset_rag_ready.json) was converted from RAG text records into seven numeric features: nitrogen, phosphorus, potassium, temperature, humidity, soil pH, and rainfall. `ml/train_crop_recommendation.py` trains a seeded Random Forest pipeline with an 80/20 stratified split and writes the model artifact to `ml/artifacts/`.
+
+The held-out test accuracy is 99.32%. This is a soil-and-climate recommendation model, not a plant-disease classifier; the saved Plant Disease Detection HTML contains no model or image dataset and was not used for training.
+
+Retrain after changing the dataset:
+
+```powershell
+.\\.venv\\Scripts\\python.exe ml\\train_crop_recommendation.py
+```
+
+The trained result is available through `POST /api/crop/recommend` and in the Farmer Guide.
+
+## Sentinel-2 public benchmark samples
+
+Five approximate 25 km square Sentinel-2 L2A chips are available under `ml/data/sentinel2_samples/` for Punjab, Western Uttar Pradesh, Maharashtra, Karnataka, and Bihar. The 2025-10-01 to 2026-04-30 search selected one low-cloud scene per region with B02, B03, B04, and B08 bands.
+
+The acquisition manifest is `ml/data/sentinel2_samples/sentinel2_public_samples_manifest.json`, and the manifest checksum is stored beside it.
+
+These chips are **public benchmark imagery samples only**. They are not approved study AOIs, task-compatible crop ground truth, spatially assigned training examples, or evidence of model performance. The Western Uttar Pradesh sample is explicitly approximate.
+
+`ml/train_sentinel_autoencoder.py` trains an unsupervised convolutional autoencoder on 1,500 random 64×64 patches from the five chips. It is a representation-learning smoke test, not supervised crop or disease training. It completed with final reconstruction MSE 0.009199 after 8 epochs on CPU. The artifact and metadata are stored in `ml/artifacts/`.
+
+Search or retrain the sample set with:
+
+```powershell
+.\\.venv\\Scripts\\python.exe ml\\pipeline\\acquire_sentinel_samples.py
+.\\.venv\\Scripts\\python.exe ml\\pipeline\\acquire_sentinel_samples.py --download
+```
 
 ## Implementation status
 

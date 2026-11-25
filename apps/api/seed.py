@@ -15,6 +15,10 @@ DATA_SOURCES = [
     ("crop-calendar", "Regional crop calendar", "Illustrative project metadata",
      "Seasonal context", "India", "Reference only", "No live service",
      None),
+    ("sickle", "SICKLE", "SICKLE authors / IIIT-Delhi",
+     "Satellite imagery and crop annotations", "Cauvery Delta, Tamil Nadu, India",
+     "Access-gated reference", "Dataset access request required",
+     "https://github.com/Depanshu-Sani/SICKLE"),
 ]
 
 

@@ -123,6 +123,9 @@ class ApiIntegrationTests(unittest.TestCase):
         dataset_statuses = {dataset["status"] for dataset in self.request("GET", "/api/datasets")[1]}
         self.assertIn("Metadata only", dataset_statuses)
         self.assertNotIn("Ready", dataset_statuses)
+        sickle = next(dataset for dataset in self.request("GET", "/api/datasets")[1] if dataset["id"] == "sickle")
+        self.assertEqual(sickle["status"], "Reference")
+        self.assertIn("2,370 sequences", sickle["coverage"])
 
     def test_seeded_runs_and_dashboard_do_not_claim_evaluated_metrics(self):
         status, runs = self.request("GET", "/api/runs")
@@ -166,6 +169,9 @@ class ApiIntegrationTests(unittest.TestCase):
         sources = {source["id"]: source for source in data["sources"]}
         self.assertIn("open-meteo", sources)
         self.assertIn("copernicus-sentinel", sources)
+        self.assertEqual(sources["sickle"]["status"], "Access-gated reference")
+        self.assertEqual(sources["sickle"]["access_type"], "Dataset access request required")
+        self.assertEqual(sources["sickle"]["source_url"], "https://github.com/Depanshu-Sani/SICKLE")
         self.assertEqual(sources["copernicus-sentinel"]["status"], "Catalog only")
         self.assertIsInstance(data["jobs"], list)
 

@@ -3,6 +3,7 @@ torch==2.8.0+cpu
 torchvision==0.23.0+cpu
 numpy>=1.26,<3
 scikit-learn>=1.5,<2
+joblib>=1.4,<2
 rasterio>=1.4,<2
 pystac-client>=0.8,<1
 huggingface_hub>=0.34,<2

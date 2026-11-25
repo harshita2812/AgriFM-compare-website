@@ -100,6 +100,7 @@ DATASETS: list[DatasetRecord] = [
     {"id": "s1s2", "name": "Sentinel-1 + Sentinel-2", "provider": "Copernicus / ESA", "resolution": "10 m", "coverage": "2017–present", "type": "SAR + optical", "status": "Metadata only"},
     {"id": "crop-calendar", "name": "Regional crop calendar", "provider": "Illustrative project metadata", "resolution": "District-level", "coverage": "India", "type": "Seasonal context", "status": "Reference"},
     {"id": "cropharvest", "name": "CropHarvest labels (candidate)", "provider": "CropHarvest contributors", "resolution": "Mixed-source polygons", "coverage": "Global; exact study-region overlap unverified", "type": "Binary and generalized crop labels", "status": "Metadata only"},
+    {"id": "sickle", "name": "SICKLE (reference)", "provider": "SICKLE authors / IIIT-Delhi", "resolution": "3 m, 10 m, 30 m labels", "coverage": "Cauvery Delta, Tamil Nadu; 2,370 sequences, 388 plots (2018–2021)", "type": "Multi-sensor time series, crop/date/yield labels", "status": "Reference"},
 ]
 
 EVALUATION_BLOCK_REASON = (
@@ -180,6 +181,16 @@ class FarmerAdvisoryRequest(BaseModel):
     crop: str
     forecast_days: int = Field(default=7, ge=1, le=16)
     language: Literal["en", "hi"] = "en"
+
+
+class CropRecommendationRequest(BaseModel):
+    nitrogen: float = Field(ge=0, le=300)
+    phosphorus: float = Field(ge=0, le=300)
+    potassium: float = Field(ge=0, le=300)
+    temperature: float = Field(ge=-20, le=60)
+    humidity: float = Field(ge=0, le=100)
+    ph: float = Field(ge=0, le=14)
+    rainfall: float = Field(ge=0, le=1000)
 
 
 def run_disclosure_fields(provenance: dict[str, Any] | None) -> dict[str, Any]:

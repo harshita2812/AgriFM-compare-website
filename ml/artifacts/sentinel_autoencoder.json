@@ -1,0 +1,31 @@
+{
+  "model_type": "sentinel-convolutional-autoencoder",
+  "bands": [
+    "B02",
+    "B03",
+    "B04",
+    "B08"
+  ],
+  "patch_count": 1500,
+  "patch_size": 64,
+  "epochs": 8,
+  "seed": 42,
+  "normalization": {
+    "low": [
+      1023.0,
+      1381.0,
+      1312.0,
+      1966.989990234375
+    ],
+    "high": [
+      2981.0,
+      3228.0,
+      3648.0,
+      4933.0
+    ]
+  },
+  "final_reconstruction_mse": 0.00919883452107509,
+  "artifact": "C:\\Users\\HARSHITA\\Downloads\\AgriFM-compare-website\\ml\\artifacts\\sentinel_autoencoder.pt",
+  "purpose": "unsupervised representation learning only",
+  "not_supervised_crop_training": true
+}
